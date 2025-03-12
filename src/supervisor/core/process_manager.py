@@ -165,6 +165,19 @@ class ProcessManager:
             if success:
                 return success, message
             logger.info(f"No existing process found on port {self.config.port}, starting new process")
+        
+        # If force_new_process is True, we need to ensure the port is free
+        # This is critical for restart operations
+        if force_new_process and self.config.port is not None:
+            # Check if there's any process using our target port
+            port_pids = self._get_processes_using_port(self.config.port)
+            if port_pids:
+                logger.warning(f"Port {self.config.port} is in use by processes {port_pids} when attempting to start new process")
+                # Try to force kill processes using the port
+                port_cleared = await self._force_kill_port_processes()
+                if not port_cleared:
+                    return False, f"Failed to free port {self.config.port} for new process"
+                logger.info(f"Successfully cleared port {self.config.port} for new process")
             
         self._restart_count = 0
         try:
@@ -273,6 +286,125 @@ class ProcessManager:
         # If we're here, the process is still running after timeout
         return False
         
+    def _get_processes_using_port(self, port: int) -> List[int]:
+        """Find all processes using a specific port.
+        
+        Args:
+            port: The port number to check
+            
+        Returns:
+            List of process IDs using the port
+        """
+        if port is None:
+            return []
+            
+        try:
+            # Use subprocess to run netstat or ss command to check port usage
+            if os.name == 'posix':
+                # On Linux/Unix, use ss command which is more modern than netstat
+                cmd = f"ss -tulpn | grep :{port} | awk '{{print $7}}' | grep -o 'pid=[0-9]*' | cut -d= -f2"
+                result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+                pids = [int(pid.strip()) for pid in result.stdout.split() if pid.strip().isdigit()]
+                
+                # If ss didn't find anything, try with lsof as a backup
+                if not pids:
+                    cmd = f"lsof -i :{port} -t"
+                    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+                    pids = [int(pid.strip()) for pid in result.stdout.split() if pid.strip().isdigit()]
+            else:
+                # On Windows, use netstat
+                cmd = f"netstat -ano | findstr :{port}"
+                result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+                pids = []
+                for line in result.stdout.split('\n'):
+                    if f":{port}" in line:
+                        parts = line.strip().split()
+                        if len(parts) >= 5:
+                            try:
+                                pids.append(int(parts[4]))
+                            except ValueError:
+                                pass
+                                
+            # Remove duplicates
+            return list(set(pids))
+        except Exception as e:
+            logger.error(f"Error checking processes using port {port}: {e}")
+            return []
+
+    async def _kill_process_by_pid(self, pid: int, timeout: float = 5.0) -> bool:
+        """Force kill a process by its PID.
+        
+        Args:
+            pid: Process ID to kill
+            timeout: Timeout for verification
+            
+        Returns:
+            True if successfully killed, False otherwise
+        """
+        try:
+            process = psutil.Process(pid)
+            
+            logger.warning(f"Force killing process {pid} to release port {self.config.port}")
+            
+            # First try graceful termination
+            process.terminate()
+            
+            # Wait briefly for termination
+            try:
+                process.wait(timeout=2)
+                return True
+            except psutil.TimeoutExpired:
+                # Force kill if still running
+                process.kill()
+                try:
+                    process.wait(timeout=3)
+                    return True
+                except psutil.TimeoutExpired:
+                    logger.error(f"Failed to kill process {pid} after multiple attempts")
+                    return False
+        except psutil.NoSuchProcess:
+            # Process already gone
+            return True
+        except Exception as e:
+            logger.error(f"Error killing process {pid}: {e}")
+            return False
+
+    async def _force_kill_port_processes(self) -> bool:
+        """Force kill all processes using the configured port.
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        if self.config.port is None:
+            return True
+            
+        logger.warning(f"Attempting to force kill all processes using port {self.config.port}")
+        
+        # Get all processes using the port
+        pids = self._get_processes_using_port(self.config.port)
+        
+        if not pids:
+            logger.info(f"No processes found using port {self.config.port}")
+            return True
+            
+        # Kill each process
+        kill_results = []
+        for pid in pids:
+            if pid == os.getpid():  # Skip our own process
+                continue
+                
+            result = await self._kill_process_by_pid(pid)
+            kill_results.append(result)
+            
+        # Verify the port is now free
+        pids_after = self._get_processes_using_port(self.config.port)
+        port_free = len(pids_after) == 0
+        
+        if not port_free:
+            logger.error(f"Failed to free port {self.config.port}, still in use by: {pids_after}")
+        
+        return port_free
+
     async def _verify_port_released(self, timeout: float = 5.0) -> bool:
         """Verify that the configured port has been released after stopping a process.
         
@@ -287,16 +419,23 @@ class ProcessManager:
             
         start_time = time.time()
         while time.time() - start_time < timeout:
-            # Check if port is in use
+            # First check using our existing method
             if self._find_process_by_port() is None:
-                # Port is free
-                return True
-                
+                # Do a secondary check with a different method to be sure
+                pids = self._get_processes_using_port(self.config.port)
+                if not pids:
+                    logger.info(f"Port {self.config.port} is confirmed free")
+                    return True
+                else:
+                    logger.warning(f"Port {self.config.port} still in use by PIDs: {pids}")
+                    
             # Wait a bit before checking again
             await asyncio.sleep(0.2)
-            
-        # If we're here, the port is still in use after timeout
-        return False
+        
+        # If we get here, the port is still in use after the timeout
+        # Try to force kill any processes still using the port
+        logger.warning(f"Port {self.config.port} still in use after timeout, attempting force kill")
+        return await self._force_kill_port_processes()
 
     async def stop(self) -> Tuple[bool, str]:
         """Stop the managed process.
