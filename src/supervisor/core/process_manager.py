@@ -91,7 +91,8 @@ class ProcessManager:
             logger.info(f"Started process: PID={self._pid}")
 
             if self.config.capture_output and self._process.stdout:
-                asyncio.create_task(self._read_output())
+                # Run in background without blocking the start method
+                asyncio.ensure_future(self._read_output())
 
             return True, f"Process started with PID: {self._pid}"
         except Exception as e:
