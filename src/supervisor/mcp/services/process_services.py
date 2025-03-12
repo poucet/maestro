@@ -61,12 +61,6 @@ def register_process_services(mcp: FastMCP, process_manager: ProcessManager) -> 
         # Give it a moment to fully shut down
         await asyncio.sleep(1.0)
         
-        # Force the process manager to set up a new log file for this restart
-        if process_manager.config.log_to_file:
-            # Re-trigger log file setup to create a new log with a fresh timestamp
-            process_manager._setup_log_file()
-            logger.info(f"MCP Tool restart_task - Created new log file: {process_manager._log_file_path}")
-        
         # Now start a fresh process, forcing a new process (don't try to attach to existing)
         logger.info(f"MCP Tool restart_task - Phase 2: Starting new process")
         start_success, start_message = await process_manager.start(force_new_process=True)
