@@ -82,6 +82,13 @@ Recent work has been focused on:
     - Improved error reporting with contextual information
     - Created standardized log format for easier diagnostics and monitoring
 
+15. **Working Directory Fix**: Changed server working directory to match the target process:
+    - Added os.chdir() at server startup to change to the target process directory
+    - Fixed issue where list_files('.') would incorrectly show supervisor files
+    - Added logging for directory change success or failure 
+    - Ensured relative paths work correctly for all file operations
+    - Maintained absolute path references for critical supervisor operations
+
 ## Next Steps
 
 The immediate next steps for development include:
