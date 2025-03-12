@@ -24,6 +24,7 @@ class ProcessConfig:
     restart_delay: float = 1.0
     max_restart_attempts: int = 3
     capture_output: bool = True
+    port: Optional[int] = None  # Port that the process listens on, if applicable
 
 
 class ProcessManager:
@@ -57,15 +58,71 @@ class ProcessManager:
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             return False
 
+    def _find_process_by_port(self) -> Optional[int]:
+        """Find a process that is listening on the configured port.
+        
+        Returns:
+            Process ID if found, None otherwise.
+        """
+        if self.config.port is None:
+            return None
+            
+        try:
+            # Use psutil to find all network connections
+            for conn in psutil.net_connections(kind='inet'):
+                # Check if this connection is listening on our port
+                if conn.status == 'LISTEN' and conn.laddr.port == self.config.port:
+                    return conn.pid
+        except (psutil.AccessDenied, psutil.Error) as e:
+            logger.warning(f"Error checking for processes listening on port {self.config.port}: {str(e)}")
+        
+        return None
+    
+    def attach_to_existing_process(self) -> Tuple[bool, str]:
+        """Try to attach to an existing process running on the configured port.
+        
+        Returns:
+            Tuple of (success, message).
+        """
+        if self.config.port is None:
+            return False, "No port configured to find existing process"
+            
+        if self.is_running:
+            return True, "Already attached to a running process"
+            
+        pid = self._find_process_by_port()
+        if pid is None:
+            return False, f"No process found listening on port {self.config.port}"
+            
+        try:
+            # Attach to the existing process
+            self._pid = pid
+            # We don't have a subprocess.Popen object for an existing process
+            self._process = None  
+            
+            logger.info(f"Attached to existing process: PID={self._pid}")
+            return True, f"Attached to existing process with PID: {self._pid}"
+        except Exception as e:
+            error_msg = f"Failed to attach to existing process: {str(e)}"
+            logger.error(error_msg)
+            return False, error_msg
+    
     async def start(self) -> Tuple[bool, str]:
-        """Start the managed process.
+        """Start the managed process or attach to an existing one.
 
         Returns:
             Tuple of (success, message).
         """
         if self.is_running:
             return True, "Process is already running"
-
+            
+        # First try to attach to an existing process if a port is configured
+        if self.config.port is not None:
+            success, message = self.attach_to_existing_process()
+            if success:
+                return success, message
+            logger.info(f"No existing process found on port {self.config.port}, starting new process")
+            
         self._restart_count = 0
         try:
             cmd = self.config.command

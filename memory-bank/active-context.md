@@ -36,6 +36,12 @@ Recent work has been focused on:
    - Enhanced stop() method to properly terminate process groups when needed
    - This ensures managed processes continue running even if the supervisor terminates unexpectedly
 
+8. **Process Discovery Feature**: Added capability to find and attach to already running processes:
+   - Implemented port-based process discovery in ProcessManager
+   - Added configuration to specify the target process port (SUPERVISOR_TARGET_PORT)
+   - Modified startup sequence to first check for existing processes before starting a new one
+   - This enables the supervisor to manage processes that were started independently
+
 ## Next Steps
 
 The immediate next steps for development include:

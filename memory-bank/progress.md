@@ -147,6 +147,8 @@ As the project is in the planning phase, no implementation issues have been enco
 - Successfully tested the start_task MCP tool functionality
 - Implemented process decoupling to ensure child processes survive supervisor termination
 - Enhanced process termination to properly handle decoupled process groups
+- Added port-based process discovery to find and attach to existing processes
+- Implemented environment configuration for target process port detection
 
 ## Next Targets
 

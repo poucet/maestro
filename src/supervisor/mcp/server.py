@@ -65,6 +65,11 @@ def start_mcp_server() -> None:
     working_dir = os.environ.get("SUPERVISOR_WORKING_DIR", ".")
     log_level = os.environ.get("SUPERVISOR_LOG_LEVEL", "INFO")
     mcp_port = int(os.environ.get("SUPERVISOR_MCP_PORT", "5000"))
+    target_port = os.environ.get("SUPERVISOR_TARGET_PORT")
+    if target_port:
+        target_port = int(target_port)
+    else:
+        target_port = 5000  # Default port for simplicity
 
     # Configure logging
     logging.basicConfig(
@@ -85,8 +90,13 @@ def start_mcp_server() -> None:
         ProcessConfig(
             command=target_cmd,
             working_dir=work_dir_path,
+            port=target_port,  # Pass the target port for process discovery
         )
     )
+    
+    # Log if we're watching for a port
+    if target_port:
+        logger.info(f"Monitoring for processes on port: {target_port}")
     
     file_manager = FileManager(allowed_paths=[work_dir_path])
     
