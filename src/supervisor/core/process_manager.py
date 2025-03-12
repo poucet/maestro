@@ -246,16 +246,25 @@ class ProcessManager:
         if self._process is None or self._process.stdout is None:
             return
 
-        while True:
-            line = self._process.stdout.readline()
-            if not line:
-                break
-
-            line = line.rstrip()
-            logger.debug(f"Process output: {line}")
-
-            if self._output_callback:
-                self._output_callback(line)
+        # Run the blocking readline() calls in a separate thread to avoid blocking the event loop
+        loop = asyncio.get_event_loop()
+        
+        def read_output_thread():
+            if self._process is None or self._process.stdout is None:
+                return
+                
+            for line in iter(self._process.stdout.readline, ''):
+                if not line:
+                    break
+                    
+                line = line.rstrip()
+                logger.debug(f"Process output: {line}")
+                
+                if self._output_callback:
+                    self._output_callback(line)
+        
+        # Run in a thread pool to avoid blocking the event loop
+        await loop.run_in_executor(None, read_output_thread)
 
         # Check if process has exited
         if self._process.poll() is not None:
