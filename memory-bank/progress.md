@@ -170,6 +170,18 @@ As the project is in the planning phase, no implementation issues have been enco
   - Enhanced port verification before process starts
   - Added direct process identification for port-blocking processes
   - Improved restart operations to ensure clean port state before starting new processes
+- Added directory listing functionality and improved file operations:
+  - Implemented list_files method in FileManager with recursive and non-recursive options
+  - Created new MCP service to expose directory listing capability
+  - Added file metadata including type, size, and modification time
+  - Implemented sorting with directories first, then files alphabetically
+  - Added appropriate security validation consistent with other operations
+- Enhanced logging throughout all MCP services:
+  - Added detailed logging for all MCP tool calls with argument information
+  - Implemented consistent SUCCESS/FAILED status logging across services
+  - Added result/output logging with appropriate content previews
+  - Improved error reporting with contextual information
+  - Created standardized log format for easier diagnostics
 
 ## Next Targets
 

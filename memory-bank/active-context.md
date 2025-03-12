@@ -68,6 +68,20 @@ Recent work has been focused on:
     - Created force-kill capabilities for stubborn processes holding onto ports
     - Enhanced restart operations to ensure port is fully released before starting new processes
 
+13. **Enhanced File Management Services**: Added directory listing functionality and improved file operations:
+    - Implemented list_files method in FileManager for both recursive and non-recursive listings
+    - Created new MCP service to expose directory listing capability
+    - Added file metadata including type, size, and modification time
+    - Implemented proper sorting (directories first, then files alphabetically)
+    - Added appropriate security validation aligned with other file operations
+
+14. **Comprehensive MCP Tool Logging**: Enhanced logging throughout all MCP services:
+    - Added detailed logging for all MCP tool calls with argument information
+    - Implemented consistent SUCCESS/FAILED status logging across all services
+    - Added result/output logging with appropriate content previews
+    - Improved error reporting with contextual information
+    - Created standardized log format for easier diagnostics and monitoring
+
 ## Next Steps
 
 The immediate next steps for development include:
