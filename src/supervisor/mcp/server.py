@@ -100,6 +100,14 @@ def start_mcp_server() -> None:
     if target_port:
         logger.info(f"Monitoring for processes on port: {target_port}")
     
+    # Change working directory to match the target process
+    logger.info(f"Changing working directory to: {work_dir_path}")
+    try:
+        os.chdir(work_dir_path)
+        logger.info(f"Current working directory is now: {os.getcwd()}")
+    except Exception as e:
+        logger.error(f"Failed to change working directory: {str(e)}")
+    
     file_manager = FileManager(allowed_paths=[work_dir_path])
     
     version_control_manager = VersionControlManager(repo_path=work_dir_path)
