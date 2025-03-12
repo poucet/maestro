@@ -10,7 +10,8 @@ from dotenv import load_dotenv
 from mcp.server import Server
 from mcp.server.fastmcp import FastMCP
 
-from supervisor.core import FileManager, ProcessManager, VersionControlManager
+from supervisor.core import FileManager, VersionControlManager
+from supervisor.core.process_manager import ProcessManager, ProcessConfig
 from supervisor.mcp.services import (
     register_file_services,
     register_git_services,
@@ -24,7 +25,8 @@ def create_mcp_server(
     process_manager: ProcessManager,
     file_manager: FileManager,
     version_control_manager: VersionControlManager,
-    transport: str = "stdio",
+    transport: str = "http",
+    port: int = 5000,
 ) -> Server:
     """Create an MCP server for the supervisor.
 
@@ -32,7 +34,8 @@ def create_mcp_server(
         process_manager: Process manager instance.
         file_manager: File manager instance.
         version_control_manager: Version control manager instance.
-        transport: MCP transport type, either "stdio" or "http".
+        transport: MCP transport type, either "http" or "stdio".
+        port: Port to use for HTTP transport.
 
     Returns:
         Configured MCP server.
@@ -58,6 +61,7 @@ def start_mcp_server() -> None:
     target_cmd = os.environ.get("SUPERVISOR_TARGET_CMD", "")
     working_dir = os.environ.get("SUPERVISOR_WORKING_DIR", ".")
     log_level = os.environ.get("SUPERVISOR_LOG_LEVEL", "INFO")
+    mcp_port = int(os.environ.get("SUPERVISOR_MCP_PORT", "5000"))
 
     # Configure logging
     logging.basicConfig(
@@ -68,13 +72,14 @@ def start_mcp_server() -> None:
     logger.info(f"Starting supervisor with target command: {target_cmd}")
     logger.info(f"Working directory: {working_dir}")
     logger.info(f"Log level: {log_level}")
+    logger.info(f"MCP server port: {mcp_port}")
 
     # Create working directory Path
     work_dir_path = Path(working_dir).resolve()
     
     # Initialize managers
     process_manager = ProcessManager(
-        ProcessManager.ProcessConfig(
+        ProcessConfig(
             command=target_cmd,
             working_dir=work_dir_path,
         )
@@ -89,10 +94,12 @@ def start_mcp_server() -> None:
         process_manager=process_manager,
         file_manager=file_manager,
         version_control_manager=version_control_manager,
+        port=mcp_port,
     )
     
-    # Run the server
-    mcp_server.run(transport="stdio")
+    # Run the server with HTTP transport (SSE)
+    logger.info(f"Starting MCP server with SSE on port {mcp_port}")
+    mcp_server.run(transport="http", port=mcp_port)
 
 
 if __name__ == "__main__":
