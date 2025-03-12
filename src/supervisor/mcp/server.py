@@ -31,6 +31,7 @@ def create_mcp_server(
     process_manager: ProcessManager,
     file_manager: FileManager,
     version_control_manager: VersionControlManager,
+    mcp_port: int
 ) -> FastMCP:
     """Create an MCP server for the supervisor.
 
@@ -43,7 +44,7 @@ def create_mcp_server(
         Configured MCP server.
     """
     # Create FastMCP server instance
-    mcp = FastMCP("supervisor")
+    mcp = FastMCP("supervisor", host="0.0.0.0", port=mcp_port)
 
     # Register all services
     register_process_services(mcp, process_manager)
@@ -65,7 +66,11 @@ async def handle_sse(request: Request):
         request.scope, request.receive, request._send
     ) as streams:
         read_stream, write_stream = streams
-        await mcp_server.run(read_stream, write_stream)
+        # FastMCP.run() expects read_stream, write_stream, and initialization options
+        await mcp_server.run(
+            read_stream,
+            write_stream
+        )
 
 
 def start_mcp_server() -> None:
@@ -110,24 +115,9 @@ def start_mcp_server() -> None:
         process_manager=process_manager,
         file_manager=file_manager,
         version_control_manager=version_control_manager,
+        mcp_port=mcp_port
     )
-    
-    # Create SSE transport and Starlette app
-    sse = SseServerTransport("/messages/")
-    
-    routes = [
-        Route("/sse", endpoint=handle_sse),
-        Mount("/messages/", app=sse.handle_post_message),
-    ]
-    
-    app = Starlette(routes=routes)
-    app.state.sse = sse
-    app.state.mcp_server = mcp_server
-    
-    # Run the server with SSE transport
-    logger.info(f"Starting MCP server with SSE on port {mcp_port}")
-    uvicorn.run(app, host="0.0.0.0", port=mcp_port)
-
+    mcp_server.run("sse")
 
 if __name__ == "__main__":
     start_mcp_server()

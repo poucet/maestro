@@ -28,6 +28,15 @@ This layer acts as the interface between clients (including AI assistants) and t
 - Manage authentication and authorization
 - Provide logging and error handling
 
+**Implementation Details:**
+- Uses FastMCP server for efficient request processing
+- Implements SSE (Server-Sent Events) for stream-based communication
+- FastMCP.run() method requires three parameters:
+  1. read_stream - Stream for reading client messages
+  2. write_stream - Stream for writing responses to client
+  3. initialization_options - Obtained from mcp_server.create_initialization_options()
+- Starlette framework provides the web server functionality for HTTP/SSE communication
+
 ### Process Manager
 
 The Process Manager handles all aspects of target process lifecycle management.
