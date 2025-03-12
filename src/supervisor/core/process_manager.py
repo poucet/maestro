@@ -145,7 +145,6 @@ class ProcessManager:
                 bufsize=1,
                 universal_newlines=True,
                 start_new_session=True,  # Create a new process group
-                preexec_fn=os.setpgrp if os.name == 'posix' else None,  # Only on Unix-like systems
             )
             self._pid = self._process.pid
 
