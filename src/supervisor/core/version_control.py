@@ -100,6 +100,33 @@ class VersionControlManager:
             logger.error(error_msg)
             return False, error_msg
 
+    def stage_files(
+        self, files: List[Union[str, Path]]
+    ) -> Tuple[bool, str]:
+        """Add files to the staging area.
+
+        Args:
+            files: List of files to add to the staging area.
+
+        Returns:
+            Tuple of (success, message).
+        """
+        if not self.is_git_repo():
+            return False, f"Not a Git repository: {self.repo_path}"
+
+        try:
+            file_paths = [str(f) for f in files]
+            success, result = self._run_git_command(["add", "--"] + file_paths)
+            
+            if not success:
+                return False, f"Failed to add files to staging area: {result}"
+
+            return True, "Files added to staging area successfully"
+        except Exception as e:
+            error_msg = f"Failed to add files to staging area: {str(e)}"
+            logger.error(error_msg)
+            return False, error_msg
+            
     def restore(
         self, files: List[Union[str, Path]], staged: bool = False
     ) -> Tuple[bool, str]:

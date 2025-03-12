@@ -45,6 +45,28 @@ def register_git_services(mcp: FastMCP, version_control_manager: VersionControlM
         return result
 
     @mcp.tool()
+    async def git_add(files: List[str]) -> str:
+        """Add files to the Git staging area.
+        
+        Args:
+            files: List of files to add to the staging area.
+            
+        Returns:
+            A message indicating success or failure.
+        """
+        logger.info(f"MCP Tool Call: git_add(files={files})")
+        
+        file_paths = [Path(f) for f in files]
+        success, message = version_control_manager.stage_files(file_paths)
+        
+        if not success:
+            logger.error(f"MCP Tool git_add FAILED: {message}")
+            return f"Error: {message}"
+        
+        logger.info(f"MCP Tool git_add SUCCESS: {message}")
+        return message
+        
+    @mcp.tool()
     async def git_restore(files: List[str], staged: bool = False) -> str:
         """Restore files to their state in the last commit.
         
