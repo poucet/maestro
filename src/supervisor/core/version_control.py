@@ -144,3 +144,99 @@ class VersionControlManager:
             return False, f"Not a Git repository: {self.repo_path}"
 
         return self._run_git_command(["status", "--porcelain"])
+        
+    def get_detailed_status(self) -> Tuple[bool, str]:
+        """Get a detailed human-readable status of the repository.
+
+        Returns:
+            Tuple of (success, detailed status).
+        """
+        if not self.is_git_repo():
+            return False, f"Not a Git repository: {self.repo_path}"
+
+        return self._run_git_command(["status"])
+        
+    def get_log(self, count: int = 10, all_branches: bool = False, 
+                pretty_format: str = "oneline") -> Tuple[bool, str]:
+        """Get the commit history of the repository.
+
+        Args:
+            count: Number of commits to retrieve (default: 10).
+            all_branches: If True, shows commits from all branches (default: False).
+            pretty_format: Format of the log output (default: "oneline").
+                Options: "oneline", "short", "medium", "full", "fuller"
+
+        Returns:
+            Tuple of (success, log output).
+        """
+        if not self.is_git_repo():
+            return False, f"Not a Git repository: {self.repo_path}"
+
+        cmd = ["log", f"--pretty=format:%h - %an, %ar : %s", f"-{count}"]
+        
+        if pretty_format == "oneline":
+            cmd = ["log", "--oneline", f"-{count}"]
+        elif pretty_format in ["short", "medium", "full", "fuller"]:
+            cmd = ["log", f"--pretty={pretty_format}", f"-{count}"]
+            
+        if all_branches:
+            cmd.append("--all")
+            
+        return self._run_git_command(cmd)
+        
+    def get_show(self, commit_hash: str = "HEAD") -> Tuple[bool, str]:
+        """Show details of a specific commit.
+
+        Args:
+            commit_hash: Hash of the commit to show (default: "HEAD").
+
+        Returns:
+            Tuple of (success, commit details).
+        """
+        if not self.is_git_repo():
+            return False, f"Not a Git repository: {self.repo_path}"
+
+        return self._run_git_command(["show", commit_hash])
+        
+    def get_diff(self, file_path: Optional[Union[str, Path]] = None, 
+                staged: bool = False) -> Tuple[bool, str]:
+        """Get the diff of files in the repository.
+
+        Args:
+            file_path: Optional path to a specific file.
+            staged: If True, shows diff for staged changes (default: False).
+
+        Returns:
+            Tuple of (success, diff output).
+        """
+        if not self.is_git_repo():
+            return False, f"Not a Git repository: {self.repo_path}"
+
+        cmd = ["diff"]
+        
+        if staged:
+            cmd.append("--staged")
+            
+        if file_path:
+            cmd.extend(["--", str(file_path)])
+            
+        return self._run_git_command(cmd)
+        
+    def get_branch_list(self, all_branches: bool = False) -> Tuple[bool, str]:
+        """Get the list of branches in the repository.
+
+        Args:
+            all_branches: If True, shows remote branches as well (default: False).
+
+        Returns:
+            Tuple of (success, branch list).
+        """
+        if not self.is_git_repo():
+            return False, f"Not a Git repository: {self.repo_path}"
+
+        cmd = ["branch"]
+        
+        if all_branches:
+            cmd.append("--all")
+            
+        return self._run_git_command(cmd)
