@@ -6,10 +6,15 @@ import os
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import uvicorn
 from dotenv import load_dotenv
 from mcp.server import Server
 from mcp.server.fastmcp import FastMCP
 from mcp.server.sse import SseServerTransport
+from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.routing import Mount, Route
+from starlette.types import Receive, Scope, Send
 
 from supervisor.core import FileManager, VersionControlManager
 from supervisor.core.process_manager import ProcessManager, ProcessConfig
@@ -26,7 +31,7 @@ def create_mcp_server(
     process_manager: ProcessManager,
     file_manager: FileManager,
     version_control_manager: VersionControlManager,
-) -> Server:
+) -> FastMCP:
     """Create an MCP server for the supervisor.
 
     Args:
@@ -47,6 +52,20 @@ def create_mcp_server(
 
     # Add handlers for additional capabilities as needed
     return mcp
+
+
+async def handle_sse(request: Request):
+    """Handle SSE connections."""
+    sse = request.app.state.sse
+    mcp_server = request.app.state.mcp_server
+    
+    logger.info("New SSE connection")
+    
+    async with sse.connect_sse(
+        request.scope, request.receive, request._send
+    ) as streams:
+        read_stream, write_stream = streams
+        await mcp_server.run(read_stream, write_stream)
 
 
 def start_mcp_server() -> None:
@@ -93,12 +112,21 @@ def start_mcp_server() -> None:
         version_control_manager=version_control_manager,
     )
     
-    # Create SSE transport with specified port
-    transport = SseServerTransport(port=mcp_port)
+    # Create SSE transport and Starlette app
+    sse = SseServerTransport("/messages/")
+    
+    routes = [
+        Route("/sse", endpoint=handle_sse),
+        Mount("/messages/", app=sse.handle_post_message),
+    ]
+    
+    app = Starlette(routes=routes)
+    app.state.sse = sse
+    app.state.mcp_server = mcp_server
     
     # Run the server with SSE transport
     logger.info(f"Starting MCP server with SSE on port {mcp_port}")
-    mcp_server.run(transport=transport)
+    uvicorn.run(app, host="0.0.0.0", port=mcp_port)
 
 
 if __name__ == "__main__":
