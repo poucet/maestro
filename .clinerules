@@ -18,6 +18,15 @@
 - MCP services are separated from core implementation
 - Tests mirror the structure of the implementation
 - Configuration is managed through environment variables with sensible defaults
+- Use pyproject.toml for project configuration (not requirements.txt)
+
+## Dependency Management
+
+- Use 'uv' for Python package management
+- All dependencies must be specified in pyproject.toml
+- Maintain clear separation between runtime and development dependencies
+- Pin dependency versions for reproducible builds
+- Use virtual environments for development and testing
 
 ## Git Workflow
 

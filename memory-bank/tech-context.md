@@ -33,7 +33,7 @@ The development environment requires:
 
 1. Python 3.10 or higher
 2. Git
-3. Virtual environment management (venv, poetry, or similar)
+3. 'uv' for Python package and virtual environment management
 4. ripgrep installed on the system
 
 ### Configuration
@@ -127,7 +127,7 @@ supervisor/
 
 ### Packaging
 
-The supervisor should be packaged as a Python package installable via pip.
+The supervisor should be packaged as a Python package defined in pyproject.toml and installable via 'uv'.
 
 ### Environment Variables
 
