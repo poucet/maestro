@@ -10,13 +10,13 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
-    {name = "Supervisor Team"},
+    {name = "Supervisor Team"}
 ]
 dependencies = [
     "psutil>=5.9.0",
     "mcp>=1.0.0",
     "fastapi>=0.95.0",
-    "uvicorn>=0.22.0",
+    "uvicorn>=0.22.0"
 ]
 
 [project.optional-dependencies]
@@ -24,8 +24,11 @@ dev = [
     "pytest>=7.3.1",
     "black>=23.3.0",
     "ruff>=0.0.261",
-    "mypy>=1.2.0",
+    "mypy>=1.2.0"
 ]
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
 
 [tool.black]
 line-length = 88
