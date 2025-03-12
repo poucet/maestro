@@ -188,6 +188,12 @@ As the project is in the planning phase, no implementation issues have been enco
   - Added logging for directory change success or failure
   - Ensured relative paths work correctly for all file operations
   - Maintained absolute path references for critical supervisor operations
+- Enhanced Git operations management:
+  - Added git_add MCP tool for staging files separate from commit
+  - Implemented stage_files method in VersionControlManager core
+  - Added proper logging for Git add operations
+  - Fixed parameter validation in list_files tool to handle no params
+  - Created a more consistent Git workflow for users
 
 ## Next Targets
 

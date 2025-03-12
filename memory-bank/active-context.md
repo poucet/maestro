@@ -89,6 +89,13 @@ Recent work has been focused on:
     - Ensured relative paths work correctly for all file operations
     - Maintained absolute path references for critical supervisor operations
 
+16. **Enhanced Git Operations**: Improved Git version control management:
+    - Added git_add MCP tool for staging files to Git
+    - Implemented staged_files method in VersionControlManager
+    - Created proper error handling and validation for Git staging operations 
+    - Added detailed logging for Git operations
+    - Fixed parameter validation in list_files tool
+
 ## Next Steps
 
 The immediate next steps for development include:
