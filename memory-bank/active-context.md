@@ -48,6 +48,19 @@ Recent work has been focused on:
    - This prevents the asyncio event loop from being blocked while reading process output
    - The fix ensures the start_task MCP service completes promptly while still capturing all process output
 
+10. **Process Restart Fix**: Fixed a critical bug in the process restart functionality:
+    - Fixed an issue where the restart operation would incorrectly attach to the existing process (that was supposed to be stopped) instead of creating a new one
+    - Added a `force_new_process` parameter to the `start()` method of the ProcessManager to skip the "attach to existing process" logic during restarts
+    - Updated all restart paths (restart method, restart_task MCP service, and auto-restart in _read_output) to use this parameter
+    - This ensures that restarts always create a completely new process instead of attaching to the still-shutting-down old process
+
+11. **Enhanced Process Termination**: Improved the process stopping functionality to ensure processes are fully terminated:
+    - Added verification methods to confirm processes actually stop and ports are released
+    - Added special handling for attached processes to ensure they're properly terminated
+    - Implemented port verification to ensure the port is released after process termination
+    - Added more aggressive cleanup for processes that don't terminate gracefully
+    - Improved error handling and reporting during process termination
+
 ## Next Steps
 
 The immediate next steps for development include:

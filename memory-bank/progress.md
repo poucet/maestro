@@ -152,7 +152,18 @@ As the project is in the planning phase, no implementation issues have been enco
 - Fixed process output handling in ProcessManager to prevent start_task MCP tool from hanging:
   - Replaced blocking readline() calls with a thread pool executor approach
   - Used asyncio.run_in_executor() to perform I/O operations without blocking the event loop
-  - Successfully tested with the supervisor managing external processes 
+  - Successfully tested with the supervisor managing external processes
+- Fixed critical bug in process restart functionality:
+  - Added force_new_process parameter to ProcessManager.start() to ensure restart creates a new process
+  - Resolved an issue where restart would incorrectly attach to the still-shutting-down process
+  - Updated all restart paths to use this parameter for consistent behavior
+  - This ensures reliable restart operations without process ID confusion
+- Enhanced process termination functionality:
+  - Added verification methods to confirm process termination and port release
+  - Implemented special handling for attached processes to ensure proper cleanup
+  - Added port verification to ensure ports are released after process termination
+  - Implemented more aggressive cleanup for processes that fail to terminate gracefully
+  - Improved error handling and reporting for process termination failures
 
 ## Next Targets
 

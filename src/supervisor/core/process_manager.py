@@ -5,6 +5,7 @@ import logging
 import os
 import signal
 import subprocess
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
@@ -74,6 +75,10 @@ class ProcessManager:
             
         logger.info(f"Process output will be logged to: {log_path}")
         self._log_file_path = log_path
+        
+        # Ensure the log directory exists
+        self._log_file_path.parent.mkdir(parents=True, exist_ok=True)
+        logger.debug(f"Ensured log directory exists: {self._log_file_path.parent}")
 
     @property
     def is_running(self) -> bool:
@@ -140,8 +145,12 @@ class ProcessManager:
             logger.error(error_msg)
             return False, error_msg
     
-    async def start(self) -> Tuple[bool, str]:
+    async def start(self, force_new_process: bool = False) -> Tuple[bool, str]:
         """Start the managed process or attach to an existing one.
+
+        Args:
+            force_new_process: If True, don't try to attach to existing processes
+                               (used for restart operations)
 
         Returns:
             Tuple of (success, message).
@@ -150,7 +159,8 @@ class ProcessManager:
             return True, "Process is already running"
             
         # First try to attach to an existing process if a port is configured
-        if self.config.port is not None:
+        # Skip this step if force_new_process is True (i.e., during restart)
+        if self.config.port is not None and not force_new_process:
             success, message = self.attach_to_existing_process()
             if success:
                 return success, message
@@ -172,25 +182,34 @@ class ProcessManager:
             log_file_handle = None
             
             # Handle log file setup
-            if self.config.log_to_file and hasattr(self, '_log_file_path'):
-                # Create parent directories if needed
+            if self.config.log_to_file:
+                # Ensure we've set up the log file path
+                if not hasattr(self, '_log_file_path'):
+                    self._setup_log_file()
+                
+                # Create parent directories if needed (redundant but for safety)
                 self._log_file_path.parent.mkdir(parents=True, exist_ok=True)
+                
+                # Close any existing log file handle
+                if hasattr(self, '_log_file_handle') and self._log_file_handle and not self._log_file_handle.closed:
+                    try:
+                        self._log_file_handle.close()
+                        logger.info(f"Closed existing log file handle before opening new one")
+                    except Exception as e:
+                        logger.error(f"Error closing existing log file handle: {str(e)}")
                 
                 # Open log file directly - this will be passed to the subprocess
                 # so it will continue logging even if supervisor dies
                 log_file_handle = open(self._log_file_path, 'w', encoding='utf-8')
                 self._log_file_handle = log_file_handle
-                logger.info(f"Opened log file for direct process output: {self._log_file_path}")
+                logger.info(f"Opened log file for direct process output: {self._log_file_path}")    
+            
+                # Process writes directly to log file, supervisor doesn't capture
+                stdout_dest = log_file_handle
+                stderr_dest = subprocess.STDOUT
                 
-                if self.config.capture_output:
-                    # Need to set up a tee-like mechanism for output capture while still logging
-                    # For simplicity, let's just set up a pipe and forward output to the file
-                    stdout_dest = subprocess.PIPE
-                    stderr_dest = subprocess.STDOUT
-                else:
-                    # Process writes directly to log file, supervisor doesn't capture
-                    stdout_dest = log_file_handle
-                    stderr_dest = subprocess.STDOUT
+                # Log to our own logger that we're starting process with output to this file
+                logger.info(f"Process will log output to: {self._log_file_path}")
             else:
                 # No log file, just capture output if configured
                 stdout_dest = subprocess.PIPE if self.config.capture_output else None
@@ -228,12 +247,64 @@ class ProcessManager:
             logger.error(error_msg)
             return False, error_msg
 
+    async def _verify_process_stopped(self, process: psutil.Process, timeout: float = 2.0) -> bool:
+        """Verify that a process has been successfully stopped.
+        
+        Args:
+            process: The psutil.Process object to check
+            timeout: Maximum time to wait for verification in seconds
+            
+        Returns:
+            True if process is confirmed stopped, False otherwise
+        """
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            try:
+                # Check if process still exists
+                if not process.is_running() or process.status() == psutil.STATUS_ZOMBIE:
+                    return True
+            except (psutil.NoSuchProcess, psutil.ZombieProcess):
+                # Process no longer exists, which is what we want
+                return True
+                
+            # Wait a bit before checking again
+            await asyncio.sleep(0.1)
+            
+        # If we're here, the process is still running after timeout
+        return False
+        
+    async def _verify_port_released(self, timeout: float = 5.0) -> bool:
+        """Verify that the configured port has been released after stopping a process.
+        
+        Args:
+            timeout: Maximum time to wait for verification in seconds
+            
+        Returns:
+            True if port is released or no port was configured, False if port is still in use
+        """
+        if self.config.port is None:
+            return True
+            
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            # Check if port is in use
+            if self._find_process_by_port() is None:
+                # Port is free
+                return True
+                
+            # Wait a bit before checking again
+            await asyncio.sleep(0.2)
+            
+        # If we're here, the port is still in use after timeout
+        return False
+
     async def stop(self) -> Tuple[bool, str]:
         """Stop the managed process.
 
         Returns:
             Tuple of (success, message).
         """
+        
         if not self.is_running:
             return True, "Process is not running"
 
@@ -242,6 +313,10 @@ class ProcessManager:
 
         try:
             process = psutil.Process(self._pid)
+            was_attached = self._process is None  # True if we attached to an existing process
+            
+            # First try to terminate the process normally
+            logger.info(f"Stopping process with PID {self._pid}")
             
             # Terminate process group if on Unix-like system
             if os.name == 'posix':
@@ -253,10 +328,9 @@ class ProcessManager:
                     os.killpg(os.getpgid(self._pid), signal.SIGTERM)
                     
                     # Wait for the main process to terminate
-                    try:
-                        process.wait(timeout=5)
-                    except psutil.TimeoutExpired:
+                    if not await self._verify_process_stopped(process, timeout=5.0):
                         # Force kill the process group if timeout
+                        logger.warning(f"Process did not terminate gracefully, using SIGKILL")
                         os.killpg(os.getpgid(self._pid), signal.SIGKILL)
                     
                     # Ensure all children are terminated
@@ -267,21 +341,34 @@ class ProcessManager:
                         except psutil.NoSuchProcess:
                             pass
                 except (ProcessLookupError, PermissionError) as e:
-                    logger.warning(f"Error terminating process group: {str(e)}")
+                    logger.warning(f"Error terminating process group: {str(e)}, falling back to direct termination")
                     # Fall back to regular process termination
                     process.terminate()
-                    try:
-                        process.wait(timeout=5)
-                    except psutil.TimeoutExpired:
+                    if not await self._verify_process_stopped(process, timeout=5.0):
                         process.kill()
             else:
                 # On Windows, just terminate the process normally
                 process.terminate()
-                try:
-                    process.wait(timeout=5)
-                except psutil.TimeoutExpired:
+                if not await self._verify_process_stopped(process, timeout=5.0):
                     process.kill()
-            
+                    
+            # For attached processes or if a port is configured, verify the port is released
+            if was_attached or self.config.port is not None:
+                if not await self._verify_port_released(timeout=5.0):
+                    logger.warning(f"Port {self.config.port} still in use after process termination")
+                    # For attached processes, we might need a more aggressive approach
+                    if was_attached:
+                        # Try direct kill if the process is still running (could be a different process now)
+                        pid = self._find_process_by_port()
+                        if pid is not None:
+                            logger.warning(f"Attempting to terminate process {pid} still using port {self.config.port}")
+                            try:
+                                kill_process = psutil.Process(pid)
+                                kill_process.kill()
+                            except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
+                                logger.error(f"Failed to kill process on port {self.config.port}: {str(e)}")
+                                return False, f"Failed to release port {self.config.port}"
+                
             # Clean up our file handle if we still have it open
             # Note: We don't close the file handle that's passed to the subprocess as
             # that would be closed automatically when the subprocess exits
@@ -296,8 +383,22 @@ class ProcessManager:
             self._process = None
             self._pid = None
             
+            # Final verification that the process has been fully terminated
+            if self.config.port is not None:
+                # If we have a port, ensure it's been released
+                port_released = await self._verify_port_released(timeout=1.0)
+                if not port_released:
+                    return False, f"Process appears stopped but port {self.config.port} is still in use"
+            
+            logger.info(f"Process successfully stopped")
             return True, "Process stopped"
         except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
+            # If the process no longer exists, that's actually a success for stopping
+            if isinstance(e, psutil.NoSuchProcess):
+                self._process = None
+                self._pid = None
+                return True, "Process no longer exists (already stopped)"
+                
             error_msg = f"Failed to stop process: {str(e)}"
             logger.error(error_msg)
             return False, error_msg
@@ -310,7 +411,7 @@ class ProcessManager:
         """
         await self.stop()
         await asyncio.sleep(self.config.restart_delay)
-        return await self.start()
+        return await self.start(force_new_process=True)
 
     def set_output_callback(self, callback: Callable[[str], None]) -> None:
         """Set a callback to receive process output.
@@ -382,4 +483,4 @@ class ProcessManager:
                     f"Auto-restarting process (attempt {self._restart_count})"
                 )
                 await asyncio.sleep(self.config.restart_delay)
-                await self.start()
+                await self.start(force_new_process=True)  # Force new process when auto-restarting

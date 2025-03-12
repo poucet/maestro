@@ -44,6 +44,7 @@ def register_process_services(mcp: FastMCP, process_manager: ProcessManager) -> 
             A message indicating success or failure.
         """
         # First ensure the process is fully stopped
+        logger.info(f"Restarting task: sending stop command...")
         stop_success, stop_message = await process_manager.stop()
         if not stop_success:
             logger.error(f"Failed to stop process: {stop_message}")
@@ -52,8 +53,15 @@ def register_process_services(mcp: FastMCP, process_manager: ProcessManager) -> 
         # Give it a moment to fully shut down
         await asyncio.sleep(1.0)
         
-        # Now start a fresh process
-        start_success, start_message = await process_manager.start()
+        # Force the process manager to set up a new log file for this restart
+        if process_manager.config.log_to_file:
+            # Re-trigger log file setup to create a new log with a fresh timestamp
+            process_manager._setup_log_file()
+            logger.info(f"Created new log file for restarted process: {process_manager._log_file_path}")
+        
+        # Now start a fresh process, forcing a new process (don't try to attach to existing)
+        logger.info(f"Starting process after clean shutdown...")
+        start_success, start_message = await process_manager.start(force_new_process=True)
         if not start_success:
             logger.error(f"Failed to start process: {start_message}")
             return f"Error starting process: {start_message}"
