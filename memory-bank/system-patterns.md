@@ -111,7 +111,13 @@ Used for different implementation strategies of file operations, process managem
 
 ### Process Manager → Target Process
 
-The Process Manager maintains a parent-child relationship with the target process, allowing for monitoring and control.
+The Process Manager maintains a monitoring and control relationship with the target process while ensuring process independence:
+
+1. **Decoupled Process Architecture**: Target processes are launched in their own process groups, ensuring they continue running even if the supervisor process terminates.
+   
+2. **Clean Termination Handling**: When stopping processes, the Process Manager properly terminates the entire process group to prevent orphaned processes.
+   
+3. **Cross-Platform Handling**: Process management techniques are adapted based on operating system (Unix vs Windows) for proper process control.
 
 ### File Manager → File System
 

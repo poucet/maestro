@@ -30,6 +30,12 @@ Recent work has been focused on:
    - Updated the MCP client settings to connect to the new port
    - Successfully tested the start_task MCP tool with the new configuration
 
+7. **Process Decoupling Enhancement**: Implemented a critical architecture change to decouple child processes:
+   - Modified ProcessManager to create fully independent child processes using start_new_session=True
+   - Implemented process group handling for clean termination on Unix-like systems
+   - Enhanced stop() method to properly terminate process groups when needed
+   - This ensures managed processes continue running even if the supervisor terminates unexpectedly
+
 ## Next Steps
 
 The immediate next steps for development include:

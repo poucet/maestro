@@ -76,6 +76,8 @@ class ProcessManager:
             if self.config.env:
                 env.update(self.config.env)
 
+            # Use start_new_session=True to decouple the child process from the supervisor
+            # This ensures the child process will continue running even if the supervisor dies
             self._process = subprocess.Popen(
                 cmd,
                 cwd=self.config.working_dir,
@@ -85,6 +87,8 @@ class ProcessManager:
                 text=True,
                 bufsize=1,
                 universal_newlines=True,
+                start_new_session=True,  # Create a new process group
+                preexec_fn=os.setpgrp if os.name == 'posix' else None,  # Only on Unix-like systems
             )
             self._pid = self._process.pid
 
@@ -114,14 +118,45 @@ class ProcessManager:
 
         try:
             process = psutil.Process(self._pid)
-            process.terminate()
             
-            # Give the process time to terminate gracefully
-            try:
-                process.wait(timeout=5)
-            except psutil.TimeoutExpired:
-                # Force kill if it doesn't terminate
-                process.kill()
+            # Terminate process group if on Unix-like system
+            if os.name == 'posix':
+                try:
+                    # Get all child processes before terminating the parent
+                    children = process.children(recursive=True)
+                    
+                    # First try to terminate the process group gracefully
+                    os.killpg(os.getpgid(self._pid), signal.SIGTERM)
+                    
+                    # Wait for the main process to terminate
+                    try:
+                        process.wait(timeout=5)
+                    except psutil.TimeoutExpired:
+                        # Force kill the process group if timeout
+                        os.killpg(os.getpgid(self._pid), signal.SIGKILL)
+                    
+                    # Ensure all children are terminated
+                    for child in children:
+                        try:
+                            if child.is_running():
+                                child.kill()
+                        except psutil.NoSuchProcess:
+                            pass
+                except (ProcessLookupError, PermissionError) as e:
+                    logger.warning(f"Error terminating process group: {str(e)}")
+                    # Fall back to regular process termination
+                    process.terminate()
+                    try:
+                        process.wait(timeout=5)
+                    except psutil.TimeoutExpired:
+                        process.kill()
+            else:
+                # On Windows, just terminate the process normally
+                process.terminate()
+                try:
+                    process.wait(timeout=5)
+                except psutil.TimeoutExpired:
+                    process.kill()
             
             self._process = None
             self._pid = None

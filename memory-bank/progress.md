@@ -145,6 +145,8 @@ As the project is in the planning phase, no implementation issues have been enco
 - Fixed process manager output handling to prevent start_task command from hanging
 - Updated MCP server port configuration to avoid port conflicts
 - Successfully tested the start_task MCP tool functionality
+- Implemented process decoupling to ensure child processes survive supervisor termination
+- Enhanced process termination to properly handle decoupled process groups
 
 ## Next Targets
 
