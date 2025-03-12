@@ -55,24 +55,6 @@ def create_mcp_server(
     return mcp
 
 
-async def handle_sse(request: Request):
-    """Handle SSE connections."""
-    sse = request.app.state.sse
-    mcp_server = request.app.state.mcp_server
-    
-    logger.info("New SSE connection")
-    
-    async with sse.connect_sse(
-        request.scope, request.receive, request._send
-    ) as streams:
-        read_stream, write_stream = streams
-        # FastMCP.run() expects read_stream, write_stream, and initialization options
-        await mcp_server.run(
-            read_stream,
-            write_stream
-        )
-
-
 def start_mcp_server() -> None:
     """Start the MCP server with configuration from environment variables."""
     # Load environment variables from .env file
