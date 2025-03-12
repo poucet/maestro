@@ -96,6 +96,13 @@ Recent work has been focused on:
     - Added detailed logging for Git operations
     - Fixed parameter validation in list_files tool
 
+17. **Simplified Logging Architecture**: Removed log_to_file logic from process management:
+    - Simplified ProcessConfig by removing log_to_file and log_file_path fields
+    - Removed _setup_log_file method and all related code in ProcessManager
+    - Updated process_services.py to remove log file setup in restart_task
+    - Changed logging approach to have the tool handle its own logging
+    - Reduced complexity in process management while maintaining logging capabilities
+
 ## Next Steps
 
 The immediate next steps for development include:

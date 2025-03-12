@@ -194,6 +194,12 @@ As the project is in the planning phase, no implementation issues have been enco
   - Added proper logging for Git add operations
   - Fixed parameter validation in list_files tool to handle no params
   - Created a more consistent Git workflow for users
+- Simplified process management logging architecture:
+  - Removed log_to_file and log_file_path fields from ProcessConfig
+  - Eliminated _setup_log_file method and related code from ProcessManager
+  - Updated process_services.py to remove log file setup in restart_task
+  - Changed to a simpler logging approach where the tool handles its own logging
+  - Reduced system complexity while maintaining logging capabilities
 
 ## Next Targets
 
