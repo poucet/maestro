@@ -91,6 +91,8 @@ def start_mcp_server() -> None:
             command=target_cmd,
             working_dir=work_dir_path,
             port=target_port,  # Pass the target port for process discovery
+            log_to_file=True,  # Enable logging to file
+            log_file_path=None,  # Use default path in logs directory
         )
     )
     

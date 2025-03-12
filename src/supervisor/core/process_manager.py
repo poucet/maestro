@@ -25,6 +25,8 @@ class ProcessConfig:
     max_restart_attempts: int = 3
     capture_output: bool = True
     port: Optional[int] = None  # Port that the process listens on, if applicable
+    log_to_file: bool = True  # Whether to log process output to a file
+    log_file_path: Optional[Path] = None  # Path to the log file, or None to use default
 
 
 class ProcessManager:
@@ -41,6 +43,37 @@ class ProcessManager:
         self._pid: Optional[int] = None
         self._restart_count = 0
         self._output_callback: Optional[Callable[[str], None]] = None
+        self._log_file_handle = None
+        
+        # Set up log file if configured
+        if self.config.log_to_file:
+            self._setup_log_file()
+            
+    def _setup_log_file(self) -> None:
+        """Set up the log file for process output."""
+        if not self.config.log_to_file:
+            return
+            
+        # Determine log file path
+        log_path = self.config.log_file_path
+        if log_path is None:
+            # Use default path in logs directory
+            log_dir = Path("logs")
+            log_dir.mkdir(exist_ok=True)
+            
+            # Create a log filename based on the command
+            if isinstance(self.config.command, list):
+                cmd_name = self.config.command[0].split("/")[-1]
+            else:
+                cmd_name = self.config.command.split()[0].split("/")[-1]
+                
+            # Add timestamp to log filename
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            log_path = log_dir / f"{cmd_name}_{timestamp}.log"
+            
+        logger.info(f"Process output will be logged to: {log_path}")
+        self._log_file_path = log_path
 
     @property
     def is_running(self) -> bool:
@@ -133,14 +166,44 @@ class ProcessManager:
             if self.config.env:
                 env.update(self.config.env)
 
+            # Setup stdout/stderr handling for proper Unix file descriptor passing
+            stdout_dest = None
+            stderr_dest = None
+            log_file_handle = None
+            
+            # Handle log file setup
+            if self.config.log_to_file and hasattr(self, '_log_file_path'):
+                # Create parent directories if needed
+                self._log_file_path.parent.mkdir(parents=True, exist_ok=True)
+                
+                # Open log file directly - this will be passed to the subprocess
+                # so it will continue logging even if supervisor dies
+                log_file_handle = open(self._log_file_path, 'w', encoding='utf-8')
+                self._log_file_handle = log_file_handle
+                logger.info(f"Opened log file for direct process output: {self._log_file_path}")
+                
+                if self.config.capture_output:
+                    # Need to set up a tee-like mechanism for output capture while still logging
+                    # For simplicity, let's just set up a pipe and forward output to the file
+                    stdout_dest = subprocess.PIPE
+                    stderr_dest = subprocess.STDOUT
+                else:
+                    # Process writes directly to log file, supervisor doesn't capture
+                    stdout_dest = log_file_handle
+                    stderr_dest = subprocess.STDOUT
+            else:
+                # No log file, just capture output if configured
+                stdout_dest = subprocess.PIPE if self.config.capture_output else None
+                stderr_dest = subprocess.STDOUT if self.config.capture_output else None
+
             # Use start_new_session=True to decouple the child process from the supervisor
             # This ensures the child process will continue running even if the supervisor dies
             self._process = subprocess.Popen(
                 cmd,
                 cwd=self.config.working_dir,
                 env=env,
-                stdout=subprocess.PIPE if self.config.capture_output else None,
-                stderr=subprocess.STDOUT if self.config.capture_output else None,
+                stdout=stdout_dest,
+                stderr=stderr_dest,
                 text=True,
                 bufsize=1,
                 universal_newlines=True,
@@ -156,6 +219,11 @@ class ProcessManager:
 
             return True, f"Process started with PID: {self._pid}"
         except Exception as e:
+            # Clean up any open file handles on error
+            if hasattr(self, '_log_file_handle') and self._log_file_handle and not self._log_file_handle.closed:
+                self._log_file_handle.close()
+                self._log_file_handle = None
+                
             error_msg = f"Failed to start process: {str(e)}"
             logger.error(error_msg)
             return False, error_msg
@@ -214,6 +282,17 @@ class ProcessManager:
                 except psutil.TimeoutExpired:
                     process.kill()
             
+            # Clean up our file handle if we still have it open
+            # Note: We don't close the file handle that's passed to the subprocess as
+            # that would be closed automatically when the subprocess exits
+            if hasattr(self, '_log_file_handle') and self._log_file_handle and not self._log_file_handle.closed:
+                try:
+                    self._log_file_handle.close()
+                    logger.info(f"Closed log file handle on process stop")
+                except Exception as e:
+                    logger.error(f"Error closing log file handle: {str(e)}")
+                self._log_file_handle = None
+            
             self._process = None
             self._pid = None
             
@@ -253,23 +332,46 @@ class ProcessManager:
             if self._process is None or self._process.stdout is None:
                 return
                 
-            for line in iter(self._process.stdout.readline, ''):
-                if not line:
-                    break
+            try:
+                for line in iter(self._process.stdout.readline, ''):
+                    if not line:
+                        break
+                        
+                    line = line.rstrip()
+                    logger.debug(f"Process output: {line}")
                     
-                line = line.rstrip()
-                logger.debug(f"Process output: {line}")
-                
-                if self._output_callback:
-                    self._output_callback(line)
+                    # If we're using capture_output and log_to_file together,
+                    # we need to manually write to the log file
+                    if self.config.capture_output and self.config.log_to_file and \
+                       hasattr(self, '_log_file_handle') and self._log_file_handle and not self._log_file_handle.closed:
+                        try:
+                            self._log_file_handle.write(f"{line}\n")
+                            self._log_file_handle.flush()  # Ensure it's written immediately
+                        except Exception as e:
+                            logger.error(f"Error writing to log file: {str(e)}")
+                    
+                    if self._output_callback:
+                        self._output_callback(line)
+            except Exception as e:
+                logger.error(f"Error reading process output: {str(e)}")
         
         # Run in a thread pool to avoid blocking the event loop
         await loop.run_in_executor(None, read_output_thread)
 
         # Check if process has exited
-        if self._process.poll() is not None:
+        if self._process and self._process.poll() is not None:
             exit_code = self._process.returncode
             logger.info(f"Process exited with code: {exit_code}")
+            
+            # Clean up our file handle if we still have it open
+            if hasattr(self, '_log_file_handle') and self._log_file_handle and not self._log_file_handle.closed:
+                try:
+                    self._log_file_handle.close()
+                    logger.info(f"Closed log file handle on process exit")
+                except Exception as e:
+                    logger.error(f"Error closing log file handle: {str(e)}")
+                self._log_file_handle = None
+            
             self._process = None
             self._pid = None
 
