@@ -4,11 +4,16 @@ import logging
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from supervisor.mcp.server import start_mcp_server
 
 
 def main() -> None:
     """Start the supervisor process."""
+    # Load environment variables from .env file
+    load_dotenv()
+    
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",

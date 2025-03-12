@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from dotenv import load_dotenv
 from mcp.server import Server
 from mcp.server.fastmcp import FastMCP
 
@@ -50,6 +51,9 @@ def create_mcp_server(
 
 def start_mcp_server() -> None:
     """Start the MCP server with configuration from environment variables."""
+    # Load environment variables from .env file
+    load_dotenv()
+    
     # Get configuration from environment variables
     target_cmd = os.environ.get("SUPERVISOR_TARGET_CMD", "")
     working_dir = os.environ.get("SUPERVISOR_WORKING_DIR", ".")
@@ -60,6 +64,10 @@ def start_mcp_server() -> None:
         level=getattr(logging, log_level),
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
+    
+    logger.info(f"Starting supervisor with target command: {target_cmd}")
+    logger.info(f"Working directory: {working_dir}")
+    logger.info(f"Log level: {log_level}")
 
     # Create working directory Path
     work_dir_path = Path(working_dir).resolve()
