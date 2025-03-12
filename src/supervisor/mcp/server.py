@@ -9,6 +9,7 @@ from typing import Dict, List, Optional
 from dotenv import load_dotenv
 from mcp.server import Server
 from mcp.server.fastmcp import FastMCP
+from mcp.server.sse import SseServerTransport
 
 from supervisor.core import FileManager, VersionControlManager
 from supervisor.core.process_manager import ProcessManager, ProcessConfig
@@ -25,8 +26,6 @@ def create_mcp_server(
     process_manager: ProcessManager,
     file_manager: FileManager,
     version_control_manager: VersionControlManager,
-    transport: str = "http",
-    port: int = 5000,
 ) -> Server:
     """Create an MCP server for the supervisor.
 
@@ -34,8 +33,6 @@ def create_mcp_server(
         process_manager: Process manager instance.
         file_manager: File manager instance.
         version_control_manager: Version control manager instance.
-        transport: MCP transport type, either "http" or "stdio".
-        port: Port to use for HTTP transport.
 
     Returns:
         Configured MCP server.
@@ -89,17 +86,19 @@ def start_mcp_server() -> None:
     
     version_control_manager = VersionControlManager(repo_path=work_dir_path)
     
-    # Create and start MCP server
+    # Create MCP server
     mcp_server = create_mcp_server(
         process_manager=process_manager,
         file_manager=file_manager,
         version_control_manager=version_control_manager,
-        port=mcp_port,
     )
     
-    # Run the server with HTTP transport (SSE)
+    # Create SSE transport with specified port
+    transport = SseServerTransport(port=mcp_port)
+    
+    # Run the server with SSE transport
     logger.info(f"Starting MCP server with SSE on port {mcp_port}")
-    mcp_server.run(transport="http", port=mcp_port)
+    mcp_server.run(transport=transport)
 
 
 if __name__ == "__main__":
