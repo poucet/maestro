@@ -164,6 +164,12 @@ As the project is in the planning phase, no implementation issues have been enco
   - Added port verification to ensure ports are released after process termination
   - Implemented more aggressive cleanup for processes that fail to terminate gracefully
   - Improved error handling and reporting for process termination failures
+- Implemented robust port management to prevent conflicts:
+  - Added OS-level port detection using multiple commands for reliability
+  - Created force-kill capabilities for processes blocking ports
+  - Enhanced port verification before process starts
+  - Added direct process identification for port-blocking processes
+  - Improved restart operations to ensure clean port state before starting new processes
 
 ## Next Targets
 
