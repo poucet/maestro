@@ -20,6 +20,8 @@ def register_process_services(mcp: FastMCP, process_manager: ProcessManager) -> 
         mcp: MCP server instance.
         process_manager: Process manager instance.
     """
+    logger.info("Registering process management MCP services")
+    
     # Path to logs directory
     logs_dir = Path("logs")
     
@@ -30,10 +32,14 @@ def register_process_services(mcp: FastMCP, process_manager: ProcessManager) -> 
         Returns:
             A message indicating success or failure.
         """
+        logger.info(f"MCP Tool Call: start_task()")
+        
         success, message = await process_manager.start()
         if not success:
-            logger.error(f"Failed to start process: {message}")
+            logger.error(f"MCP Tool start_task FAILED: {message}")
             return f"Error: {message}"
+        
+        logger.info(f"MCP Tool start_task SUCCESS: {message}")
         return message
 
     @mcp.tool()
@@ -43,11 +49,13 @@ def register_process_services(mcp: FastMCP, process_manager: ProcessManager) -> 
         Returns:
             A message indicating success or failure.
         """
+        logger.info(f"MCP Tool Call: restart_task()")
+        
         # First ensure the process is fully stopped
-        logger.info(f"Restarting task: sending stop command...")
+        logger.info(f"MCP Tool restart_task - Phase 1: Stopping process")
         stop_success, stop_message = await process_manager.stop()
         if not stop_success:
-            logger.error(f"Failed to stop process: {stop_message}")
+            logger.error(f"MCP Tool restart_task FAILED during stop phase: {stop_message}")
             return f"Error stopping process: {stop_message}"
             
         # Give it a moment to fully shut down
@@ -57,16 +65,16 @@ def register_process_services(mcp: FastMCP, process_manager: ProcessManager) -> 
         if process_manager.config.log_to_file:
             # Re-trigger log file setup to create a new log with a fresh timestamp
             process_manager._setup_log_file()
-            logger.info(f"Created new log file for restarted process: {process_manager._log_file_path}")
+            logger.info(f"MCP Tool restart_task - Created new log file: {process_manager._log_file_path}")
         
         # Now start a fresh process, forcing a new process (don't try to attach to existing)
-        logger.info(f"Starting process after clean shutdown...")
+        logger.info(f"MCP Tool restart_task - Phase 2: Starting new process")
         start_success, start_message = await process_manager.start(force_new_process=True)
         if not start_success:
-            logger.error(f"Failed to start process: {start_message}")
+            logger.error(f"MCP Tool restart_task FAILED during start phase: {start_message}")
             return f"Error starting process: {start_message}"
             
-        logger.info(f"Process restarted successfully")
+        logger.info(f"MCP Tool restart_task SUCCESS: Process restarted with PID {process_manager._pid}")
         return f"Process restarted successfully: {start_message}"
     
     @mcp.tool()
@@ -76,8 +84,11 @@ def register_process_services(mcp: FastMCP, process_manager: ProcessManager) -> 
         Returns:
             A dictionary containing log file information.
         """
+        logger.info(f"MCP Tool Call: list_process_logs()")
+        
         try:
             if not logs_dir.exists():
+                logger.warning(f"MCP Tool list_process_logs: Logs directory not found at {logs_dir}")
                 return {"success": False, "message": "Logs directory not found", "logs": []}
                 
             log_files = []
@@ -95,6 +106,7 @@ def register_process_services(mcp: FastMCP, process_manager: ProcessManager) -> 
             # Sort by modified time, newest first
             log_files.sort(key=lambda x: x["modified"], reverse=True)
                 
+            logger.info(f"MCP Tool list_process_logs SUCCESS: Found {len(log_files)} log files")
             return {
                 "success": True,
                 "message": f"Found {len(log_files)} log files",
@@ -102,7 +114,7 @@ def register_process_services(mcp: FastMCP, process_manager: ProcessManager) -> 
             }
         except Exception as e:
             error_msg = f"Failed to list log files: {str(e)}"
-            logger.error(error_msg)
+            logger.error(f"MCP Tool list_process_logs FAILED: {error_msg}")
             return {"success": False, "message": error_msg, "logs": []}
 
     @mcp.tool()
@@ -115,23 +127,30 @@ def register_process_services(mcp: FastMCP, process_manager: ProcessManager) -> 
         Returns:
             A dictionary containing the log file content or error message.
         """
+        logger.info(f"MCP Tool Call: read_process_log(filename='{filename}')")
+        
         try:
             log_path = logs_dir / filename
             
             # Security check - ensure the file is within the logs directory
             if not log_path.is_relative_to(logs_dir):
+                logger.warning(f"MCP Tool read_process_log security check FAILED: Path traversal attempt with '{filename}'")
                 return {
                     "success": False, 
                     "message": "Invalid log file path"
                 }
                 
             if not log_path.exists() or not log_path.is_file():
+                logger.warning(f"MCP Tool read_process_log FAILED: Log file not found: {filename}")
                 return {
                     "success": False, 
                     "message": f"Log file not found: {filename}"
                 }
                 
             content = log_path.read_text(encoding="utf-8")
+            content_size = len(content)
+            
+            logger.info(f"MCP Tool read_process_log SUCCESS: Read {content_size} bytes from log file '{filename}'")
             return {
                 "success": True,
                 "message": f"Read log file: {filename}",
@@ -141,5 +160,5 @@ def register_process_services(mcp: FastMCP, process_manager: ProcessManager) -> 
             }
         except Exception as e:
             error_msg = f"Failed to read log file {filename}: {str(e)}"
-            logger.error(error_msg)
+            logger.error(f"MCP Tool read_process_log FAILED: {error_msg}")
             return {"success": False, "message": error_msg}

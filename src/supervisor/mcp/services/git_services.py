@@ -18,6 +18,7 @@ def register_git_services(mcp: FastMCP, version_control_manager: VersionControlM
         mcp: MCP server instance.
         version_control_manager: Version control manager instance.
     """
+    logger.info("Registering Git operation MCP services")
     
     @mcp.tool()
     async def git_commit(message: str, files: Optional[List[str]] = None) -> str:
@@ -30,11 +31,17 @@ def register_git_services(mcp: FastMCP, version_control_manager: VersionControlM
         Returns:
             A message indicating success or failure.
         """
+        files_str = str(files) if files else "all changes"
+        logger.info(f"MCP Tool Call: git_commit(message='{message}', files={files_str})")
+        
         file_paths = [Path(f) for f in files] if files else None
         success, result = version_control_manager.commit(message, file_paths)
+        
         if not success:
-            logger.error(f"Failed to commit changes: {result}")
+            logger.error(f"MCP Tool git_commit FAILED: {result}")
             return f"Error: {result}"
+        
+        logger.info(f"MCP Tool git_commit SUCCESS: {result}")
         return result
 
     @mcp.tool()
@@ -48,11 +55,16 @@ def register_git_services(mcp: FastMCP, version_control_manager: VersionControlM
         Returns:
             A message indicating success or failure.
         """
+        logger.info(f"MCP Tool Call: git_restore(files={files}, staged={staged})")
+        
         file_paths = [Path(f) for f in files]
         success, message = version_control_manager.restore(file_paths, staged)
+        
         if not success:
-            logger.error(f"Failed to restore files: {message}")
+            logger.error(f"MCP Tool git_restore FAILED: {message}")
             return f"Error: {message}"
+        
+        logger.info(f"MCP Tool git_restore SUCCESS: {message}")
         return message
     
     @mcp.tool()
@@ -62,17 +74,23 @@ def register_git_services(mcp: FastMCP, version_control_manager: VersionControlM
         Returns:
             A dictionary containing the status output or error message.
         """
+        logger.info(f"MCP Tool Call: git_status()")
+        
         # Get machine-readable status
         success, porcelain_status = version_control_manager.get_status()
         if not success:
-            logger.error(f"Failed to get git status: {porcelain_status}")
+            logger.error(f"MCP Tool git_status FAILED: {porcelain_status}")
             return {"success": False, "message": f"Error: {porcelain_status}"}
             
         # Get human-readable status
         success, detailed_status = version_control_manager.get_detailed_status()
         if not success:
-            logger.error(f"Failed to get detailed git status: {detailed_status}")
+            logger.error(f"MCP Tool git_status FAILED: {detailed_status}")
             return {"success": False, "message": f"Error: {detailed_status}"}
+        
+        # Count changed files
+        changed_files = len([line for line in porcelain_status.split("\n") if line])
+        logger.info(f"MCP Tool git_status SUCCESS: Repository has {changed_files} changed files")
             
         return {
             "success": True,
@@ -94,14 +112,17 @@ def register_git_services(mcp: FastMCP, version_control_manager: VersionControlM
         Returns:
             A dictionary containing the log output or error message.
         """
+        logger.info(f"MCP Tool Call: git_log(count={count}, all_branches={all_branches}, format='{format}')")
+        
         success, log_output = version_control_manager.get_log(count, all_branches, format)
         if not success:
-            logger.error(f"Failed to get git log: {log_output}")
+            logger.error(f"MCP Tool git_log FAILED: {log_output}")
             return {"success": False, "message": f"Error: {log_output}"}
             
         # Split the log output into lines for easier parsing
         log_entries = [line for line in log_output.split("\n") if line]
         
+        logger.info(f"MCP Tool git_log SUCCESS: Retrieved {len(log_entries)} commits")
         return {
             "success": True,
             "count": len(log_entries),
@@ -120,10 +141,15 @@ def register_git_services(mcp: FastMCP, version_control_manager: VersionControlM
         Returns:
             A dictionary containing the commit details or error message.
         """
+        logger.info(f"MCP Tool Call: git_show(commit_hash='{commit_hash}')")
+        
         success, show_output = version_control_manager.get_show(commit_hash)
         if not success:
-            logger.error(f"Failed to get git show: {show_output}")
+            logger.error(f"MCP Tool git_show FAILED: {show_output}")
             return {"success": False, "message": f"Error: {show_output}"}
+        
+        output_preview = show_output[:100] + "..." if len(show_output) > 100 else show_output
+        logger.info(f"MCP Tool git_show SUCCESS: Retrieved details for commit '{commit_hash}', preview: {output_preview}")
             
         return {
             "success": True,
@@ -142,13 +168,20 @@ def register_git_services(mcp: FastMCP, version_control_manager: VersionControlM
         Returns:
             A dictionary containing the diff output or error message.
         """
+        file_info = f"file='{file_path}'" if file_path else "all files"
+        logger.info(f"MCP Tool Call: git_diff({file_info}, staged={staged})")
+        
         success, diff_output = version_control_manager.get_diff(
             Path(file_path) if file_path else None, 
             staged
         )
         if not success:
-            logger.error(f"Failed to get git diff: {diff_output}")
+            logger.error(f"MCP Tool git_diff FAILED: {diff_output}")
             return {"success": False, "message": f"Error: {diff_output}"}
+        
+        # Count lines of diff for logging
+        diff_lines = len(diff_output.split("\n"))
+        logger.info(f"MCP Tool git_diff SUCCESS: Retrieved {diff_lines} lines of diff for {file_info}, staged={staged}")
             
         return {
             "success": True,
@@ -167,9 +200,11 @@ def register_git_services(mcp: FastMCP, version_control_manager: VersionControlM
         Returns:
             A dictionary containing the branch list or error message.
         """
+        logger.info(f"MCP Tool Call: git_branch(all_branches={all_branches})")
+        
         success, branch_output = version_control_manager.get_branch_list(all_branches)
         if not success:
-            logger.error(f"Failed to get git branches: {branch_output}")
+            logger.error(f"MCP Tool git_branch FAILED: {branch_output}")
             return {"success": False, "message": f"Error: {branch_output}"}
             
         # Parse branch output
@@ -181,6 +216,8 @@ def register_git_services(mcp: FastMCP, version_control_manager: VersionControlM
             if branch.startswith("*"):
                 current_branch = branch[1:].strip()
                 branches[i] = branch[1:].strip()
+        
+        logger.info(f"MCP Tool git_branch SUCCESS: Found {len(branches)} branches, current branch: {current_branch}")
                 
         return {
             "success": True,

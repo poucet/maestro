@@ -18,6 +18,7 @@ def register_file_services(mcp: FastMCP, file_manager: FileManager) -> None:
         mcp: MCP server instance.
         file_manager: File manager instance.
     """
+    logger.info("Registering file management MCP services")
     
     @mcp.tool()
     async def read_file(path: str) -> str:
@@ -29,10 +30,14 @@ def register_file_services(mcp: FastMCP, file_manager: FileManager) -> None:
         Returns:
             The content of the file, or an error message.
         """
+        logger.info(f"MCP Tool Call: read_file(path='{path}')")
         success, content = file_manager.read_file(path)
         if not success:
-            logger.error(f"Failed to read file: {content}")
+            logger.error(f"MCP Tool read_file FAILED: {content}")
             return f"Error: {content}"
+        
+        content_preview = content[:100] + "..." if len(content) > 100 else content
+        logger.info(f"MCP Tool read_file SUCCESS: Read {len(content)} bytes from '{path}', preview: {content_preview}")
         return content
 
     @mcp.tool()
@@ -46,10 +51,15 @@ def register_file_services(mcp: FastMCP, file_manager: FileManager) -> None:
         Returns:
             A message indicating success or failure.
         """
+        content_preview = content[:100] + "..." if len(content) > 100 else content
+        logger.info(f"MCP Tool Call: edit_file(path='{path}', content='{content_preview}')")
+        
         success, message = file_manager.write_file(path, content)
         if not success:
-            logger.error(f"Failed to write file: {message}")
+            logger.error(f"MCP Tool edit_file FAILED: {message}")
             return f"Error: {message}"
+        
+        logger.info(f"MCP Tool edit_file SUCCESS: {message}")
         return message
 
     @mcp.tool()
@@ -64,10 +74,16 @@ def register_file_services(mcp: FastMCP, file_manager: FileManager) -> None:
         Returns:
             A message indicating success or failure.
         """
+        original_preview = original[:50] + "..." if len(original) > 50 else original
+        modified_preview = modified[:50] + "..." if len(modified) > 50 else modified
+        logger.info(f"MCP Tool Call: change_in_file(path='{path}', original='{original_preview}', modified='{modified_preview}')")
+        
         success, message = file_manager.apply_diff(path, original, modified)
         if not success:
-            logger.error(f"Failed to apply diff: {message}")
+            logger.error(f"MCP Tool change_in_file FAILED: {message}")
             return f"Error: {message}"
+        
+        logger.info(f"MCP Tool change_in_file SUCCESS: {message}")
         return message
 
     @mcp.tool()
@@ -81,9 +97,11 @@ def register_file_services(mcp: FastMCP, file_manager: FileManager) -> None:
         Returns:
             Dictionary containing file listing or error information.
         """
+        logger.info(f"MCP Tool Call: list_files(path='{path}', recursive={recursive})")
+        
         success, results = file_manager.list_files(path, recursive)
         if not success or isinstance(results, str):
-            logger.error(f"Failed to list files: {results}")
+            logger.error(f"MCP Tool list_files FAILED: {results}")
             return {
                 "success": False,
                 "message": f"Error: {results}",
@@ -91,6 +109,7 @@ def register_file_services(mcp: FastMCP, file_manager: FileManager) -> None:
             }
         
         if not results:
+            logger.info(f"MCP Tool list_files SUCCESS: Directory '{path}' is empty")
             return {
                 "success": True,
                 "message": "Directory is empty.",
@@ -104,6 +123,7 @@ def register_file_services(mcp: FastMCP, file_manager: FileManager) -> None:
                 item["modified"] = datetime.fromtimestamp(item["modified"]).isoformat()
         
         # Return structured data
+        logger.info(f"MCP Tool list_files SUCCESS: Listed {len(results)} items in '{path}'")
         return {
             "success": True,
             "message": f"Listed {len(results)} items",
@@ -124,13 +144,17 @@ def register_file_services(mcp: FastMCP, file_manager: FileManager) -> None:
         Returns:
             Search results or an error message.
         """
+        file_pattern_info = f", file_pattern='{file_pattern}'" if file_pattern else ""
+        logger.info(f"MCP Tool Call: search_files(pattern='{pattern}', path='{path}'{file_pattern_info})")
+        
         success, results = file_manager.search_files(pattern, path, file_pattern)
         if not success or isinstance(results, str):
-            logger.error(f"Failed to search files: {results}")
+            logger.error(f"MCP Tool search_files FAILED: {results}")
             return f"Error: {results}"
         
         # Format search results
         if not results:
+            logger.info(f"MCP Tool search_files SUCCESS: No matches found for pattern '{pattern}' in '{path}'")
             return "No matches found."
             
         formatted_results = []
@@ -138,5 +162,6 @@ def register_file_services(mcp: FastMCP, file_manager: FileManager) -> None:
             formatted_results.append(
                 f"File: {match['path']}, Line {match['line']}: {match['content']}"
             )
-            
+        
+        logger.info(f"MCP Tool search_files SUCCESS: Found {len(results)} matches for pattern '{pattern}' in '{path}'")
         return "\n".join(formatted_results)
