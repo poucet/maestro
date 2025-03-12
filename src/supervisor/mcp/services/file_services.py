@@ -87,16 +87,20 @@ def register_file_services(mcp: FastMCP, file_manager: FileManager) -> None:
         return message
 
     @mcp.tool()
-    async def list_files(path: str, recursive: bool = False) -> Dict[str, Any]:
+    async def list_files(path: str = ".", recursive: bool = False) -> Dict[str, Any]:
         """List files and directories within a directory.
         
         Args:
-            path: Path to the directory.
+            path: Path to the directory. Defaults to current directory.
             recursive: Whether to list files recursively.
             
         Returns:
             Dictionary containing file listing or error information.
         """
+        # Set default path if not provided
+        if not path:
+            path = "."
+            
         logger.info(f"MCP Tool Call: list_files(path='{path}', recursive={recursive})")
         
         success, results = file_manager.list_files(path, recursive)
