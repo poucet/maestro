@@ -28,7 +28,7 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["."]
+packages = ["src/supervisor"]
 
 [tool.black]
 line-length = 88
