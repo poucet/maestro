@@ -42,6 +42,12 @@ Recent work has been focused on:
    - Modified startup sequence to first check for existing processes before starting a new one
    - This enables the supervisor to manage processes that were started independently
 
+9. **Improved Process Output Handling**: Resolved a critical issue with the process output reading that caused the start_task MCP tool to hang:
+   - Fixed the blocking readline() calls in the _read_output method by moving them to a thread pool executor
+   - Used asyncio.run_in_executor() to run the blocking I/O operations in a background thread
+   - This prevents the asyncio event loop from being blocked while reading process output
+   - The fix ensures the start_task MCP service completes promptly while still capturing all process output
+
 ## Next Steps
 
 The immediate next steps for development include:
