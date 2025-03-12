@@ -8,7 +8,7 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union, Any
 
 logger = logging.getLogger(__name__)
 
@@ -142,6 +142,75 @@ class FileManager:
             logger.error(error_msg)
             return False, error_msg
 
+    def list_files(
+        self, path: Union[str, Path], recursive: bool = False
+    ) -> Tuple[bool, Union[List[Dict[str, Any]], str]]:
+        """List files and directories within a directory.
+        
+        Args:
+            path: Path to the directory.
+            recursive: Whether to list files recursively.
+            
+        Returns:
+            Tuple of (success, file list or error message).
+        """
+        path = Path(path).resolve()
+        if not self._is_path_allowed(path):
+            error_msg = f"Path not allowed: {path}"
+            logger.error(error_msg)
+            return False, error_msg
+            
+        try:
+            if not path.exists():
+                return False, f"Path not found: {path}"
+                
+            if not path.is_dir():
+                return False, f"Not a directory: {path}"
+                
+            result = []
+            
+            if recursive:
+                # Handle recursive listing
+                for item in path.glob('**/*'):
+                    # Skip .git directories and similar hidden files
+                    if any(part.startswith('.') for part in item.parts):
+                        continue
+                        
+                    relative_path = item.relative_to(path)
+                    
+                    item_info = {
+                        "name": item.name,
+                        "path": str(relative_path),
+                        "is_dir": item.is_dir(),
+                        "size": item.stat().st_size if item.is_file() else None,
+                        "modified": item.stat().st_mtime,
+                    }
+                    result.append(item_info)
+            else:
+                # Handle non-recursive listing (top-level only)
+                for item in path.iterdir():
+                    # Skip hidden files and directories
+                    if item.name.startswith('.'):
+                        continue
+                        
+                    item_info = {
+                        "name": item.name,
+                        "path": item.name,
+                        "is_dir": item.is_dir(),
+                        "size": item.stat().st_size if item.is_file() else None,
+                        "modified": item.stat().st_mtime,
+                    }
+                    result.append(item_info)
+            
+            # Sort results: directories first, then files, both alphabetically
+            result.sort(key=lambda x: (not x["is_dir"], x["name"].lower()))
+            
+            return True, result
+        except Exception as e:
+            error_msg = f"Failed to list files in {path}: {str(e)}"
+            logger.error(error_msg)
+            return False, error_msg
+    
     def search_files(
         self, pattern: str, path: Union[str, Path], file_pattern: Optional[str] = None
     ) -> Tuple[bool, Union[List[Dict[str, str]], str]]:

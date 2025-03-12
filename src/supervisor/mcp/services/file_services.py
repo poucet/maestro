@@ -71,6 +71,48 @@ def register_file_services(mcp: FastMCP, file_manager: FileManager) -> None:
         return message
 
     @mcp.tool()
+    async def list_files(path: str, recursive: bool = False) -> Dict[str, Any]:
+        """List files and directories within a directory.
+        
+        Args:
+            path: Path to the directory.
+            recursive: Whether to list files recursively.
+            
+        Returns:
+            Dictionary containing file listing or error information.
+        """
+        success, results = file_manager.list_files(path, recursive)
+        if not success or isinstance(results, str):
+            logger.error(f"Failed to list files: {results}")
+            return {
+                "success": False,
+                "message": f"Error: {results}",
+                "files": []
+            }
+        
+        if not results:
+            return {
+                "success": True,
+                "message": "Directory is empty.",
+                "files": []
+            }
+            
+        # Convert datetime objects to strings for JSON serialization
+        for item in results:
+            if item["modified"] is not None:
+                from datetime import datetime
+                item["modified"] = datetime.fromtimestamp(item["modified"]).isoformat()
+        
+        # Return structured data
+        return {
+            "success": True,
+            "message": f"Listed {len(results)} items",
+            "path": path,
+            "recursive": recursive,
+            "files": results
+        }
+
+    @mcp.tool()
     async def search_files(pattern: str, path: str, file_pattern: Optional[str] = None) -> str:
         """Search for a pattern in files.
         
