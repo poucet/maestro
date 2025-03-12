@@ -1,5 +1,6 @@
 """MCP services for process management."""
 
+import asyncio
 import logging
 import os
 from pathlib import Path
@@ -42,11 +43,23 @@ def register_process_services(mcp: FastMCP, process_manager: ProcessManager) -> 
         Returns:
             A message indicating success or failure.
         """
-        success, message = await process_manager.restart()
-        if not success:
-            logger.error(f"Failed to restart process: {message}")
-            return f"Error: {message}"
-        return message
+        # First ensure the process is fully stopped
+        stop_success, stop_message = await process_manager.stop()
+        if not stop_success:
+            logger.error(f"Failed to stop process: {stop_message}")
+            return f"Error stopping process: {stop_message}"
+            
+        # Give it a moment to fully shut down
+        await asyncio.sleep(1.0)
+        
+        # Now start a fresh process
+        start_success, start_message = await process_manager.start()
+        if not start_success:
+            logger.error(f"Failed to start process: {start_message}")
+            return f"Error starting process: {start_message}"
+            
+        logger.info(f"Process restarted successfully")
+        return f"Process restarted successfully: {start_message}"
     
     @mcp.tool()
     async def list_process_logs() -> Dict[str, Any]:
