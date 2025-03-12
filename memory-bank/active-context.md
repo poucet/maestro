@@ -22,6 +22,13 @@ Recent work has been focused on:
      1. read_stream for receiving client messages
      2. write_stream for sending responses
      3. initialization_options obtained from mcp_server.create_initialization_options()
+5. **Process Manager Output Handling Fix**: Fixed an issue where the start_task command would hang due to blocking output reading:
+   - Changed asyncio.create_task() to asyncio.ensure_future() to ensure the process output reading doesn't block the start method
+   - This allows the start_task command to return properly while still capturing process output
+6. **MCP Server Port Configuration**: Updated the MCP server port configuration to avoid conflicts:
+   - Changed the default MCP port from 4999 to 4998 in the environment configuration
+   - Updated the MCP client settings to connect to the new port
+   - Successfully tested the start_task MCP tool with the new configuration
 
 ## Next Steps
 
