@@ -1,6 +1,10 @@
 # Simply Maestro
 
-A Python-based process manager that can monitor, edit code, and manage the lifecycle of another process. This system is integrated with the Model Context Protocol (MCP) to expose its capabilities as services.
+> *Orchestrating code and processes with precision and elegance*
+
+A Python-based process manager that monitors, coordinates, and conducts the lifecycle of other processes and code. Like a maestro directing an orchestra, Simply Maestro harmonizes all aspects of your application's runtime environment through the Model Context Protocol (MCP).
+
+Part of the "Simply" family of tools, Simply Maestro brings sophisticated process management capabilities with the simplicity and reliability you expect.
 
 ## Features
 
