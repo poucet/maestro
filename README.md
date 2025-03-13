@@ -16,16 +16,26 @@ Part of the "Simply" family of tools, Simply Maestro brings sophisticated proces
 
 ## MCP Service Capabilities
 
-The following capabilities are exposed as MCP services:
+Simply Maestro exposes the following capabilities as MCP services, organized by category:
 
-1. `restart_task` - Restart a running server
-2. `start_task` - Start a server process
-3. `read_file` - Read file contents
-4. `edit_file` - Direct file editing
-5. `change_in_file` - Apply diffs to files
-6. `search_files` - Search files with ripgrep
-7. `git_restore` - Git restore operations
-8. `git_commit` - Git commit operations
+### Process Management
+- `start_task` - Monitor an existing process or start a new one
+- `stop_task` - Stop a running process
+- `restart_task` - Emergency restart when needed (target processes typically have their own restart mechanisms)
+
+### Process Logging
+- `list_process_logs` - List available process log files
+- `read_process_log` - Read the contents of a specific log file
+
+### File Operations
+- `read_file` - Read file contents
+- `edit_file` - Direct file editing
+- `change_in_file` - Apply diffs to files
+- `search_files` - Search files with ripgrep
+
+### Version Control (Git)
+- `git_restore` - Git restore operations
+- `git_commit` - Git commit operations
 
 ## Installation
 
@@ -51,14 +61,21 @@ Simply Maestro requires the following environment variables:
 - `SIMPLY_MAESTRO_TARGET_CMD`: Command to start the target process
 - `SIMPLY_MAESTRO_WORKING_DIR`: Working directory for operations
 - `SIMPLY_MAESTRO_LOG_LEVEL`: Logging verbosity (DEBUG, INFO, WARNING, ERROR)
-- `SIMPLY_MAESTRO_MCP_PORT`: Port for the MCP server (default: 5000)
+- `SIMPLY_MAESTRO_MCP_PORT`: Port for the MCP server (default: 4998)
 - `SIMPLY_MAESTRO_TARGET_PORT`: Port for the target process (for discovery)
 
 ## Usage
 
 ```bash
-# Start Simply Maestro
+# Start Simply Maestro directly
 python -m simply_maestro
+
+# Or use the provided scripts:
+# Start Simply Maestro in the background with logging
+./start.sh
+
+# Stop Simply Maestro and any managed processes
+./kill.sh
 ```
 
 ## Development
