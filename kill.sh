@@ -1,91 +1,30 @@
 #!/bin/bash
 
-# Kill script for Simply Projects
-# Stops both the supervisor and the managed process
+# Kill script for Simply Maestro
+# Delegates to the shared supervisor kill script
 
-# Configuration - should match start.sh
-APP_NAME="Simply Maestro"
-PID_FILE=".simply_maestro.pid"
-SUPERVISOR_PID_FILE=".supervisor.pid"
+# Use shared supervisor directory
+SUPERVISOR_DIR="../supervisor"
 
-echo "Stopping $APP_NAME and its supervisor..."
-
-# Function to kill a process by PID
-kill_process_by_pid() {
-    local pid=$1
-    local signal=$2
-    local process_name=$3
-
-    if ps -p $pid > /dev/null 2>&1; then
-        echo "Sending $signal signal to $process_name (PID: $pid)..."
-        kill -$signal $pid
-        return 0
-    else
-        echo "$process_name process with PID $pid is not running."
-        return 1
-    fi
-}
-
-# Check and kill managed process
-if [ -f $PID_FILE ]; then
-    PROCESS_PID=$(cat $PID_FILE)
-    kill_process_by_pid $PROCESS_PID TERM "$APP_NAME"
-    # Remove the PID file
-    rm $PID_FILE
-else
-    echo "$APP_NAME PID file not found."
+# Check if configuration file exists
+if [ ! -f ".supervisor" ]; then
+    echo "Error: .supervisor configuration file not found!"
+    exit 1
 fi
 
-# Check and kill supervisor process
-if [ -f $SUPERVISOR_PID_FILE ]; then
-    SUPERVISOR_PID=$(cat $SUPERVISOR_PID_FILE)
-    kill_process_by_pid $SUPERVISOR_PID TERM "Supervisor"
-    # Remove the PID file
-    rm $SUPERVISOR_PID_FILE
-else
-    echo "Supervisor PID file not found."
+# Check if supervisor directory exists
+if [ ! -d "$SUPERVISOR_DIR" ]; then
+    echo "Error: Supervisor directory not found at $SUPERVISOR_DIR"
+    exit 1
 fi
 
-# Wait a moment to give processes time to exit gracefully
-sleep 2
-
-# Check if processes are still running
-still_running=false
-
-# Check managed process if PID was found
-if [ -n "$PROCESS_PID" ] && ps -p $PROCESS_PID > /dev/null 2>&1; then
-    echo "$APP_NAME process (PID: $PROCESS_PID) is still running."
-    still_running=true
+# Check if kill script exists
+if [ ! -f "$SUPERVISOR_DIR/kill.sh" ]; then
+    echo "Error: kill.sh not found in $SUPERVISOR_DIR"
+    exit 1
 fi
 
-# Check supervisor process if PID was found
-if [ -n "$SUPERVISOR_PID" ] && ps -p $SUPERVISOR_PID > /dev/null 2>&1; then
-    echo "Supervisor process (PID: $SUPERVISOR_PID) is still running."
-    still_running=true
-fi
-
-# Force kill if processes are still running
-if $still_running; then
-    echo "Some processes are still running. Force kill? (y/n)"
-    read -r response
-    if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-        echo "Force killing remaining processes..."
-
-        # Force kill managed process if still running
-        if [ -n "$PROCESS_PID" ] && ps -p $PROCESS_PID > /dev/null 2>&1; then
-            kill_process_by_pid $PROCESS_PID 9 "$APP_NAME"
-        fi
-
-        # Force kill supervisor if still running
-        if [ -n "$SUPERVISOR_PID" ] && ps -p $SUPERVISOR_PID > /dev/null 2>&1; then
-            kill_process_by_pid $SUPERVISOR_PID 9 "Supervisor"
-        fi
-
-        echo "All processes have been forcefully terminated."
-    else
-        echo "Abort. Some processes may still be running."
-        exit 1
-    fi
-fi
-
-echo "$APP_NAME shutdown complete."
+# Execute the shared kill script with our configuration
+echo "Using shared kill script..."
+CURRENT_DIR=$(pwd)
+"$SUPERVISOR_DIR/kill.sh" "conf=$CURRENT_DIR/.supervisor"

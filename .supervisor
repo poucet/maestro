@@ -1,0 +1,11 @@
+#!/bin/bash
+# Simply Maestro Supervisor Configuration
+
+# Application settings
+APP_NAME="Simply Maestro"
+COMMAND="uv run -m simply_maestro"
+PORT=4998
+PID_FILE=".simply_maestro.pid"
+APP_DIR="/home/chris/projects/simply/maestro"
+RESTART_EXIT_CODE=42
+SUPERVISOR_PID_FILE=".supervisor-simply-maestro.pid"

@@ -1,40 +1,30 @@
 #!/bin/bash
 
 # Start script for Simply Maestro
-# Launches the supervisor in the background with logging
+# Delegates to the shared supervisor start script
 
-# Configuration
-APP_NAME="Simply Maestro"
-COMMAND="uv run -m simply_maestro"
-PORT=4998
-PID_FILE=".simply_maestro.pid"
-APP_DIR="/home/chris/projects/simply/maestro"
-RESTART_EXIT_CODE=42
-SUPERVISOR_PID_FILE=".supervisor.pid"
+# Use shared supervisor directory
+SUPERVISOR_DIR="../supervisor"
 
-# Check if supervisor is already running
-if [ -f "$SUPERVISOR_PID_FILE" ]; then
-  EXISTING_PID=$(cat "$SUPERVISOR_PID_FILE")
-  if ps -p "$EXISTING_PID" > /dev/null; then
-    echo "Supervisor is already running with PID $EXISTING_PID"
-    echo "Use ./kill.sh to stop it before starting a new one"
+# Check if supervisor directory exists
+if [ ! -d "$SUPERVISOR_DIR" ]; then
+    echo "Error: Supervisor directory not found at $SUPERVISOR_DIR"
     exit 1
-  else
-    echo "Removing stale PID file for non-existent process $EXISTING_PID"
-    rm "$SUPERVISOR_PID_FILE"
-  fi
 fi
 
-echo "Starting $APP_NAME supervisor..."
-nohup ./supervisor.sh "$APP_NAME" "$COMMAND" "$PORT" "$PID_FILE" "$APP_DIR" "$RESTART_EXIT_CODE" > supervisor.log 2>&1 &
+# Check if start script exists
+if [ ! -f "$SUPERVISOR_DIR/start.sh" ]; then
+    echo "Error: start.sh not found in $SUPERVISOR_DIR"
+    exit 1
+fi
 
-# Get the PID of the supervisor process
-SUPERVISOR_PID=$!
+# Check if configuration file exists
+if [ ! -f ".supervisor" ]; then
+    echo "Error: .supervisor configuration file not found!"
+    exit 1
+fi
 
-# Store the supervisor PID to a file
-echo $SUPERVISOR_PID > "$SUPERVISOR_PID_FILE"
-echo "Supervisor PID $SUPERVISOR_PID saved to $SUPERVISOR_PID_FILE"
-
-echo "$APP_NAME supervisor started with PID $SUPERVISOR_PID"
-echo "Logs are being written to supervisor.log"
-echo "Use ./kill.sh to stop the supervisor and its managed processes"
+# Execute the shared start script with our configuration
+echo "Using shared start script from $SUPERVISOR_DIR..."
+CURRENT_DIR=$(pwd)
+cd "$SUPERVISOR_DIR" && ./start.sh "conf=$CURRENT_DIR/.supervisor" && cd - > /dev/null
