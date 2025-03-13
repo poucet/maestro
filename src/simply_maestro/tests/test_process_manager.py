@@ -7,8 +7,8 @@ import pytest
 import tempfile
 import time
 
-from supervisor.core import ProcessManager
-from supervisor.core.process_manager import ProcessConfig
+from simply_maestro.core import ProcessManager
+from simply_maestro.core.process_manager import ProcessConfig
 
 
 @pytest.fixture

@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import tempfile
 
-from supervisor.core import FileManager
+from simply_maestro.core import FileManager
 
 
 @pytest.fixture

@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "supervisor"
-version = "0.1.0"
-description = "A Python supervisor process that can monitor, edit code, and restart processes while providing MCP service capabilities"
+name = "simply-maestro"
+version = "1.0.0-alpha"
+description = "Simply Maestro - a process manager that can monitor, edit code, and restart processes while providing MCP service capabilities"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
@@ -31,7 +31,7 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/supervisor"]
+packages = ["src/simply_maestro"]
 
 [tool.black]
 line-length = 88

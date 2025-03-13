@@ -1,4 +1,4 @@
-"""Main entry point for the supervisor."""
+"""Main entry point for Simply Maestro."""
 
 import logging
 import sys
@@ -6,7 +6,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from supervisor.mcp.server import start_mcp_server
+from simply_maestro.mcp.server import start_mcp_server
 
 
 def main() -> None:
@@ -21,14 +21,14 @@ def main() -> None:
     )
     
     logger = logging.getLogger(__name__)
-    logger.info("Starting supervisor process")
+    logger.info("Starting Simply Maestro process")
     
     try:
         start_mcp_server()
     except KeyboardInterrupt:
-        logger.info("Supervisor process stopped by user")
+        logger.info("Simply Maestro process stopped by user")
     except Exception as e:
-        logger.error(f"Error in supervisor process: {str(e)}", exc_info=True)
+        logger.error(f"Error in Simply Maestro process: {str(e)}", exc_info=True)
         sys.exit(1)
 
 

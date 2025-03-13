@@ -1,6 +1,6 @@
-# Python Supervisor Process
+# Simply Maestro
 
-A Python-based supervisor process that can monitor, edit code, and manage the lifecycle of another process. This system is integrated with the Model Context Protocol (MCP) to expose its capabilities as services.
+A Python-based process manager that can monitor, edit code, and manage the lifecycle of another process. This system is integrated with the Model Context Protocol (MCP) to expose its capabilities as services.
 
 ## Features
 
@@ -29,8 +29,8 @@ Ensure you have Python 3.10+ and `uv` installed. Then:
 
 ```bash
 # Clone the repository
-git clone https://github.com/username/supervisor.git
-cd supervisor
+git clone https://github.com/username/simply-maestro.git
+cd simply-maestro
 
 # Create and activate virtual environment
 uv venv
@@ -42,17 +42,19 @@ uv pip install -e .
 
 ## Configuration
 
-The supervisor requires the following environment variables:
+Simply Maestro requires the following environment variables:
 
-- `SUPERVISOR_TARGET_CMD`: Command to start the target process
-- `SUPERVISOR_WORKING_DIR`: Working directory for operations
-- `SUPERVISOR_LOG_LEVEL`: Logging verbosity (DEBUG, INFO, WARNING, ERROR)
+- `SIMPLY_MAESTRO_TARGET_CMD`: Command to start the target process
+- `SIMPLY_MAESTRO_WORKING_DIR`: Working directory for operations
+- `SIMPLY_MAESTRO_LOG_LEVEL`: Logging verbosity (DEBUG, INFO, WARNING, ERROR)
+- `SIMPLY_MAESTRO_MCP_PORT`: Port for the MCP server (default: 5000)
+- `SIMPLY_MAESTRO_TARGET_PORT`: Port for the target process (for discovery)
 
 ## Usage
 
 ```bash
-# Start the supervisor
-python -m supervisor
+# Start Simply Maestro
+python -m simply_maestro
 ```
 
 ## Development

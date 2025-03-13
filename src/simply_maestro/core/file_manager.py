@@ -1,4 +1,4 @@
-"""File management functionality for the supervisor."""
+"""File management functionality for Simply Maestro."""
 
 import difflib
 import json

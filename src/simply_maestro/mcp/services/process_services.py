@@ -8,7 +8,7 @@ from typing import Dict, Any, List, Optional
 
 from mcp.server.fastmcp import FastMCP
 
-from supervisor.core import ProcessManager
+from simply_maestro.core import ProcessManager
 
 logger = logging.getLogger(__name__)
 

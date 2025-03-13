@@ -1,4 +1,4 @@
-"""MCP server implementation for the supervisor."""
+"""MCP server implementation for Simply Maestro."""
 
 import asyncio
 import logging
@@ -16,9 +16,9 @@ from starlette.requests import Request
 from starlette.routing import Mount, Route
 from starlette.types import Receive, Scope, Send
 
-from supervisor.core import FileManager, VersionControlManager
-from supervisor.core.process_manager import ProcessManager, ProcessConfig
-from supervisor.mcp.services import (
+from simply_maestro.core import FileManager, VersionControlManager
+from simply_maestro.core.process_manager import ProcessManager, ProcessConfig
+from simply_maestro.mcp.services import (
     register_file_services,
     register_git_services,
     register_process_services,
@@ -44,7 +44,7 @@ def create_mcp_server(
         Configured MCP server.
     """
     # Create FastMCP server instance
-    mcp = FastMCP("supervisor", host="0.0.0.0", port=mcp_port)
+    mcp = FastMCP("simply-maestro", host="0.0.0.0", port=mcp_port)
 
     # Register all services
     register_process_services(mcp, process_manager)
@@ -61,11 +61,11 @@ def start_mcp_server() -> None:
     load_dotenv()
     
     # Get configuration from environment variables
-    target_cmd = os.environ.get("SUPERVISOR_TARGET_CMD", "")
-    working_dir = os.environ.get("SUPERVISOR_WORKING_DIR", ".")
-    log_level = os.environ.get("SUPERVISOR_LOG_LEVEL", "INFO")
-    mcp_port = int(os.environ.get("SUPERVISOR_MCP_PORT", "5000"))
-    target_port = os.environ.get("SUPERVISOR_TARGET_PORT")
+    target_cmd = os.environ.get("SIMPLY_MAESTRO_TARGET_CMD", "")
+    working_dir = os.environ.get("SIMPLY_MAESTRO_WORKING_DIR", ".")
+    log_level = os.environ.get("SIMPLY_MAESTRO_LOG_LEVEL", "INFO")
+    mcp_port = int(os.environ.get("SIMPLY_MAESTRO_MCP_PORT", "5000"))
+    target_port = os.environ.get("SIMPLY_MAESTRO_TARGET_PORT")
     if target_port:
         target_port = int(target_port)
     else:
@@ -77,7 +77,7 @@ def start_mcp_server() -> None:
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
     
-    logger.info(f"Starting supervisor with target command: {target_cmd}")
+    logger.info(f"Starting Simply Maestro with target command: {target_cmd}")
     logger.info(f"Working directory: {working_dir}")
     logger.info(f"Log level: {log_level}")
     logger.info(f"MCP server port: {mcp_port}")

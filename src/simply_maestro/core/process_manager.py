@@ -1,4 +1,4 @@
-"""Process management functionality for the supervisor."""
+"""Process management functionality for Simply Maestro."""
 
 import asyncio
 import logging

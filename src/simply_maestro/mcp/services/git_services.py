@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Any, Union
 
 from mcp.server.fastmcp import FastMCP
 
-from supervisor.core import VersionControlManager
+from simply_maestro.core import VersionControlManager
 
 logger = logging.getLogger(__name__)
 

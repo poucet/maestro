@@ -1,4 +1,4 @@
-"""Version control functionality for the supervisor."""
+"""Version control functionality for Simply Maestro."""
 
 import logging
 import subprocess
@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class VersionControlManager:
-    """Manages Git operations for the supervisor."""
+    """Manages Git operations for Simply Maestro."""
 
     def __init__(self, repo_path: Path) -> None:
         """Initialize the version control manager.
