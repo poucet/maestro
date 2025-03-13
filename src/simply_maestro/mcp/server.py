@@ -33,7 +33,7 @@ def create_mcp_server(
     version_control_manager: VersionControlManager,
     mcp_port: int
 ) -> FastMCP:
-    """Create an MCP server for the supervisor.
+    """Create an MCP server for Simply Maestro.
 
     Args:
         process_manager: Process manager instance.

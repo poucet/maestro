@@ -1,5 +1,5 @@
-"""MCP service layer for the supervisor."""
+"""MCP service layer for Simply Maestro."""
 
-from supervisor.mcp.server import create_mcp_server
+from simply_maestro.mcp.server import create_mcp_server
 
 __all__ = ["create_mcp_server"]

@@ -156,8 +156,8 @@ class ProcessManager:
             stdout_dest = subprocess.PIPE if self.config.capture_output else None
             stderr_dest = subprocess.STDOUT if self.config.capture_output else None
 
-            # Use start_new_session=True to decouple the child process from the supervisor
-            # This ensures the child process will continue running even if the supervisor dies
+            # Use start_new_session=True to decouple the child process from Simply Maestro
+            # This ensures the child process will continue running even if Simply Maestro exits
             self._process = subprocess.Popen(
                 cmd,
                 cwd=self.config.working_dir,

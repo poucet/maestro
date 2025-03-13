@@ -10,7 +10,7 @@ from simply_maestro.mcp.server import start_mcp_server
 
 
 def main() -> None:
-    """Start the supervisor process."""
+    """Start the Simply Maestro process."""
     # Load environment variables from .env file
     load_dotenv()
     

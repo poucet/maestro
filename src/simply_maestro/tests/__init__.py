@@ -1,1 +1,1 @@
-"""Test package for the supervisor."""
+"""Test package for Simply Maestro."""
