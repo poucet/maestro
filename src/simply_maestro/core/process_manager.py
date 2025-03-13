@@ -361,11 +361,32 @@ class ProcessManager:
         return await self._force_kill_port_processes()
 
     async def stop(self) -> Tuple[bool, str]:
-        """Stop the managed process.
+        """Stop the managed process or any process using the configured port.
 
         Returns:
             Tuple of (success, message).
         """
+        
+        # If we don't have a process running but we have a port configured,
+        # try to find and stop any process using that port
+        if not self.is_running and self.config.port is not None:
+            logger.info(f"No tracked process running, checking for processes on port {self.config.port}")
+            # First try to attach to any existing process on our port
+            success, message = self.attach_to_existing_process()
+            if not success:
+                # Check if there's still something on the port we can force-kill
+                pids = self._get_processes_using_port(self.config.port)
+                if not pids:
+                    return True, "No process found to stop"
+                
+                logger.info(f"Found untracked processes using port {self.config.port}: {pids}")
+                # Try to force kill these processes
+                port_cleared = await self._force_kill_port_processes()
+                if port_cleared:
+                    return True, f"Successfully terminated processes using port {self.config.port}"
+                else:
+                    return False, f"Failed to terminate processes using port {self.config.port}"
+            # If attachment succeeded, continue with normal termination below
         
         if not self.is_running:
             return True, "Process is not running"
@@ -507,12 +528,7 @@ class ProcessManager:
             
             self._process = None
             self._pid = None
-
-            # Auto-restart if needed
-            if self._restart_count < self.config.max_restart_attempts:
-                self._restart_count += 1
-                logger.info(
-                    f"Auto-restarting process (attempt {self._restart_count})"
-                )
-                await asyncio.sleep(self.config.restart_delay)
-                await self.start(force_new_process=True)  # Force new process when auto-restarting
+            
+            # We don't auto-restart the process since the target application
+            # has its own babysitter for restart operations
+            logger.info("Process monitoring ended - relying on target's own babysitter for restart")

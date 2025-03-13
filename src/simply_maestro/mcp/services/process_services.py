@@ -26,8 +26,31 @@ def register_process_services(mcp: FastMCP, process_manager: ProcessManager) -> 
     logs_dir = Path("logs")
     
     @mcp.tool()
+    async def stop_task() -> str:
+        """Stop the managed process.
+        
+        Note: Since the target process has its own babysitter, Simply Maestro
+        only needs to stop processes when explicitly requested.
+        
+        Returns:
+            A message indicating success or failure.
+        """
+        logger.info(f"MCP Tool Call: stop_task()")
+        
+        stop_success, stop_message = await process_manager.stop()
+        if not stop_success:
+            logger.error(f"MCP Tool stop_task FAILED: {stop_message}")
+            return f"Error stopping process: {stop_message}"
+        
+        logger.info(f"MCP Tool stop_task SUCCESS: {stop_message}")
+        return stop_message
+
+    @mcp.tool()
     async def start_task() -> str:
-        """Start the managed process.
+        """Monitor an existing managed process or start if needed.
+        
+        Note: This tool primarily attaches to an existing process for monitoring.
+        The target process is expected to have its own babysitter for restart.
         
         Returns:
             A message indicating success or failure.
@@ -44,12 +67,15 @@ def register_process_services(mcp: FastMCP, process_manager: ProcessManager) -> 
 
     @mcp.tool()
     async def restart_task() -> str:
-        """Restart the managed process.
+        """Emergency restart of the managed process.
+        
+        Note: This should only be used in emergency situations as the target
+        process is expected to have its own babysitter for normal restart operations.
         
         Returns:
             A message indicating success or failure.
         """
-        logger.info(f"MCP Tool Call: restart_task()")
+        logger.info(f"MCP Tool Call: restart_task() - EMERGENCY USE ONLY")
         
         # First ensure the process is fully stopped
         logger.info(f"MCP Tool restart_task - Phase 1: Stopping process")
