@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class FileManager:
-    """Manages file operations for the supervisor."""
+    """Manages file operations for Simply Maestro."""
 
     def __init__(self, allowed_paths: List[Path]) -> None:
         """Initialize the file manager.
