@@ -267,3 +267,53 @@ class VersionControlManager:
             cmd.append("--all")
             
         return self._run_git_command(cmd)
+            
+    def create_tag(self, tag_name: str, message: Optional[str] = None, 
+                  annotated: bool = True, force: bool = False) -> Tuple[bool, str]:
+        """Create a tag in the repository.
+
+        Args:
+            tag_name: Name of the tag to create.
+            message: Optional message for the tag (used for annotated tags).
+            annotated: If True, creates an annotated tag (default: True).
+            force: If True, forces tag creation even if it already exists (default: False).
+
+        Returns:
+            Tuple of (success, message).
+        """
+        if not self.is_git_repo():
+            return False, f"Not a Git repository: {self.repo_path}"
+
+        try:
+            cmd = ["tag"]
+            
+            if force:
+                cmd.append("-f")
+                
+            if annotated and message:
+                cmd.extend(["-a", "-m", message, tag_name])
+            elif annotated:
+                cmd.extend(["-a", "-m", f"Tag: {tag_name}", tag_name])
+            else:
+                cmd.append(tag_name)
+                
+            success, result = self._run_git_command(cmd)
+            if not success:
+                return False, f"Failed to create tag: {result}"
+                
+            return True, f"Tag '{tag_name}' created successfully"
+        except Exception as e:
+            error_msg = f"Failed to create tag: {str(e)}"
+            logger.error(error_msg)
+            return False, error_msg
+            
+    def list_tags(self) -> Tuple[bool, str]:
+        """List all tags in the repository.
+
+        Returns:
+            Tuple of (success, tags list).
+        """
+        if not self.is_git_repo():
+            return False, f"Not a Git repository: {self.repo_path}"
+            
+        return self._run_git_command(["tag", "-l"])

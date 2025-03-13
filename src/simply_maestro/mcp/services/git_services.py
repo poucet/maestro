@@ -247,3 +247,55 @@ def register_git_services(mcp: FastMCP, version_control_manager: VersionControlM
             "current_branch": current_branch,
             "branches": branches
         }
+        
+    @mcp.tool()
+    async def git_create_tag(tag_name: str, message: Optional[str] = None, 
+                            annotated: bool = True, force: bool = False) -> Dict[str, Any]:
+        """Create a tag in the Git repository.
+        
+        Args:
+            tag_name: Name of the tag to create.
+            message: Optional message for the tag (used for annotated tags).
+            annotated: If True, creates an annotated tag (default: True).
+            force: If True, forces tag creation even if it already exists (default: False).
+            
+        Returns:
+            A dictionary containing result information.
+        """
+        logger.info(f"MCP Tool Call: git_create_tag(tag_name='{tag_name}', message='{message}', annotated={annotated}, force={force})")
+        
+        success, result = version_control_manager.create_tag(tag_name, message, annotated, force)
+        if not success:
+            logger.error(f"MCP Tool git_create_tag FAILED: {result}")
+            return {"success": False, "message": f"Error: {result}"}
+            
+        logger.info(f"MCP Tool git_create_tag SUCCESS: {result}")
+        return {
+            "success": True,
+            "tag_name": tag_name,
+            "message": result
+        }
+        
+    @mcp.tool()
+    async def git_list_tags() -> Dict[str, Any]:
+        """List all tags in the Git repository.
+        
+        Returns:
+            A dictionary containing the list of tags or error message.
+        """
+        logger.info(f"MCP Tool Call: git_list_tags()")
+        
+        success, tags_output = version_control_manager.list_tags()
+        if not success:
+            logger.error(f"MCP Tool git_list_tags FAILED: {tags_output}")
+            return {"success": False, "message": f"Error: {tags_output}"}
+            
+        # Parse tags output
+        tags = [tag.strip() for tag in tags_output.split("\n") if tag.strip()]
+        
+        logger.info(f"MCP Tool git_list_tags SUCCESS: Found {len(tags)} tags")
+        return {
+            "success": True,
+            "count": len(tags),
+            "tags": tags
+        }
