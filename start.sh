@@ -8,7 +8,7 @@ APP_NAME="Simply Maestro"
 COMMAND="uv run -m simply_maestro"
 PORT=4998
 PID_FILE=".simply_maestro.pid"
-APP_DIR="/home/chris/projects/prime/simply-maestro"
+APP_DIR="/home/chris/projects/simply/maestro"
 RESTART_EXIT_CODE=42
 
 echo "Starting $APP_NAME supervisor..."
