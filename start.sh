@@ -19,5 +19,5 @@ CURRENT_DIR=$(pwd)
 
 # Use absolute paths for both configuration and log files
 cd "$SUPERVISOR_DIR"
-./start.sh "conf=$CURRENT_DIR/$CONFIG_FILE" "log=$CURRENT_DIR/$LOG_FILE"
+./start.sh "conf=$CURRENT_DIR/$CONFIG_FILE"
 cd - > /dev/null

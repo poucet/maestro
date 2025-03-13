@@ -51,6 +51,4 @@ htmlcov/
 logs
 
 # Runtime information
-.supervisor.pid
-.simply_maestro.pid
-supervisor.log
+.*.pid
