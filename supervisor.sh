@@ -92,6 +92,8 @@ while true; do
   # Start the process in the background
   uv run -m simply_maestro &
   PROCESS_PID=$!
+  # Store the PID for the kill script
+  echo $PROCESS_PID > .simply_maestro.pid
   echo "Simply Maestro started with PID $PROCESS_PID"
   
   # Wait for the process to exit or for code changes
