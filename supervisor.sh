@@ -28,6 +28,42 @@ get_last_modified() {
 LAST_MODIFIED=$(get_last_modified)
 echo "Initial code state recorded."
 
+# Make sure we're the only supervisor process running for this app
+ensure_single_instance() {
+  # Find other supervisor processes that are running this app (exclude ourselves)
+  # Use a more robust pattern that matches regardless of how the process was started
+  local other_supervisors=$(ps aux | grep "supervisor.sh" | grep "${APP_NAME}" | grep -v grep | grep -v $$ | awk '{print $2}')
+  
+  if [ ! -z "$other_supervisors" ]; then
+    echo "WARNING: Found other supervisor processes for ${APP_NAME}:"
+    for pid in $other_supervisors; do
+      # Make sure we don't kill our own children or parents
+      if [ "$pid" != "$$" ] && [ "$pid" != "$PPID" ] && [ "$(ps -o ppid= -p $pid)" != "$$" ]; then
+        echo "  PID: $pid (terminating)"
+        kill -TERM "$pid" 2>/dev/null
+      fi
+    done
+    
+    # Give them a moment to exit
+    sleep 2
+    
+    # Check if any are still running
+    other_supervisors=$(ps aux | grep "supervisor.sh" | grep "${APP_NAME}" | grep -v grep | grep -v $$ | awk '{print $2}')
+    if [ ! -z "$other_supervisors" ]; then
+      echo "WARNING: Forcefully terminating remaining supervisors"
+      for pid in $other_supervisors; do
+        # Double-check this isn't our parent or child
+        if [ "$pid" != "$$" ] && [ "$pid" != "$PPID" ] && [ "$(ps -o ppid= -p $pid)" != "$$" ]; then
+          echo "  PID: $pid (forcing termination)"
+          kill -9 "$pid" 2>/dev/null
+        fi
+      done
+    fi
+    
+    echo "This process (PID $$) is now the only supervisor for ${APP_NAME}"
+  fi
+}
+
 # Function to check if port is in use
 check_port_in_use() {
   local port_pid=$(lsof -ti:$PORT 2>/dev/null | tr '\n' ' ')
@@ -93,8 +129,13 @@ graceful_shutdown() {
 # Handle signals
 trap 'graceful_shutdown; exit 0' SIGINT SIGTERM
 
+# Make sure we are the only supervisor process for this app
+ensure_single_instance
+
 # Main loop
 while true; do
+  # Check again for other supervisor processes at the start of each loop
+  ensure_single_instance
   echo "Starting $APP_NAME..."
   cd "$APP_DIR"
   
@@ -133,7 +174,7 @@ while true; do
   
   # If we get here without breaking, the process exited on its own
   # Get the exit code
-  wait $PROCESS_PID
+  wait $PROCESS_PID || true
   EXIT_CODE=$?
   
   if [ $EXIT_CODE -eq $RESTART_EXIT_CODE ]; then
