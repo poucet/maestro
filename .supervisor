@@ -2,7 +2,7 @@
 # Simply Maestro Supervisor Configuration
 
 # Application settings
-APP_NAME="Simply Maestro"
+APP_NAME="simply-maestro"
 COMMAND="uv run -m simply_maestro"
 PORT=4998
 PID_FILE=".simply_maestro.pid"
