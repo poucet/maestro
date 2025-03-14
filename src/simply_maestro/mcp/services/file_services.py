@@ -137,6 +137,89 @@ def register_file_services(mcp: FastMCP, file_manager: FileManager) -> None:
         }
 
     @mcp.tool()
+    async def find_files(
+        path: str, 
+        pattern: Optional[str] = None,
+        respect_gitignore: bool = True,
+        file_type: Optional[str] = None,
+        max_depth: Optional[int] = None,
+        min_size: Optional[int] = None,
+        max_size: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """Find files in a directory based on various criteria, respecting .gitignore.
+        
+        Args:
+            path: Path to the directory to search in.
+            pattern: Optional glob pattern to match filenames (e.g., "*.py").
+            respect_gitignore: Whether to respect .gitignore patterns (default: True).
+            file_type: Optional file type filter ('file', 'dir', or None for both).
+            max_depth: Optional maximum directory depth to search.
+            min_size: Optional minimum file size in bytes.
+            max_size: Optional maximum file size in bytes.
+            
+        Returns:
+            Dictionary containing search results or error information.
+        """
+        # Log tool call with all parameters for diagnostic purposes
+        logger.info(
+            f"MCP Tool Call: find_files(path='{path}', pattern={pattern}, "
+            f"respect_gitignore={respect_gitignore}, file_type={file_type}, "
+            f"max_depth={max_depth}, min_size={min_size}, max_size={max_size})"
+        )
+        
+        # Call the core file manager method
+        success, results = file_manager.find_files(
+            path=path,
+            pattern=pattern,
+            respect_gitignore=respect_gitignore,
+            file_type=file_type,
+            max_depth=max_depth,
+            min_size=min_size,
+            max_size=max_size
+        )
+        
+        if not success or isinstance(results, str):
+            logger.error(f"MCP Tool find_files FAILED: {results}")
+            return {
+                "success": False,
+                "message": f"Error: {results}",
+                "files": []
+            }
+        
+        if not results:
+            logger.info(f"MCP Tool find_files SUCCESS: No files found matching criteria in '{path}'")
+            return {
+                "success": True,
+                "message": "No files found matching the specified criteria.",
+                "files": []
+            }
+            
+        # Convert datetime objects to strings for JSON serialization
+        for item in results:
+            if item["modified"] is not None:
+                from datetime import datetime
+                item["modified"] = datetime.fromtimestamp(item["modified"]).isoformat()
+        
+        # Return structured data
+        result_summary = (
+            f"Found {len(results)} items in '{path}'" +
+            (f' matching pattern "{pattern}"' if pattern else '') +
+            f"{' (respecting .gitignore)' if respect_gitignore else ''}"
+        )
+        
+        logger.info(f"MCP Tool find_files SUCCESS: {result_summary}")
+        return {
+            "success": True,
+            "message": result_summary,
+            "path": path,
+            "pattern": pattern,
+            "respect_gitignore": respect_gitignore,
+            "file_type": file_type,
+            "count": len(results),
+            "files": results
+        }
+    
+    @mcp.tool()
     async def search_files(pattern: str, path: str, file_pattern: Optional[str] = None) -> str:
         """Search for a pattern in files.
         

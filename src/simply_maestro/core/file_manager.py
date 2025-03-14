@@ -215,6 +215,197 @@ class FileManager:
             logger.error(error_msg)
             return False, error_msg
     
+    def find_files(
+        self, 
+        path: Union[str, Path],
+        pattern: Optional[str] = None,
+        respect_gitignore: bool = True,
+        file_type: Optional[str] = None,
+        max_depth: Optional[int] = None,
+        min_size: Optional[int] = None,
+        max_size: Optional[int] = None,
+    ) -> Tuple[bool, Union[List[Dict[str, Any]], str]]:
+        """Find files in a directory based on various criteria, respecting .gitignore.
+        
+        Args:
+            path: Path to the directory to search in.
+            pattern: Optional glob pattern to match filenames.
+            respect_gitignore: Whether to respect .gitignore patterns.
+            file_type: Optional file type filter ('file', 'dir', or None for both).
+            max_depth: Optional maximum recursion depth.
+            min_size: Optional minimum file size in bytes.
+            max_size: Optional maximum file size in bytes.
+            
+        Returns:
+            Tuple of (success, file list or error message).
+        """
+        path = Path(path).resolve()
+        if not self._is_path_allowed(path):
+            error_msg = f"Path not allowed: {path}"
+            logger.error(error_msg)
+            return False, error_msg
+            
+        try:
+            if not path.exists():
+                return False, f"Path not found: {path}"
+                
+            if not path.is_dir():
+                return False, f"Not a directory: {path}"
+                
+            result = []
+            gitignore_patterns = self._load_gitignore_patterns(path) if respect_gitignore else []
+            
+            # Traverse directory recursively
+            def should_include(item_path: Path, current_depth: int) -> bool:
+                """Check if a path should be included in the results based on filters."""
+                # Check max depth
+                if max_depth is not None and current_depth > max_depth:
+                    return False
+                    
+                # Skip hidden files/dirs unless explicitly included in pattern
+                if item_path.name.startswith('.') and (pattern is None or not pattern.startswith('.')):
+                    return False
+                    
+                # Check if path matches gitignore patterns
+                if respect_gitignore and self._is_ignored_by_gitignore(item_path, path, gitignore_patterns):
+                    return False
+                    
+                # Check file type filter
+                if file_type == 'file' and not item_path.is_file():
+                    return False
+                if file_type == 'dir' and not item_path.is_dir():
+                    return False
+                    
+                # Check file size constraints for files
+                if item_path.is_file():
+                    size = item_path.stat().st_size
+                    if min_size is not None and size < min_size:
+                        return False
+                    if max_size is not None and size > max_size:
+                        return False
+                        
+                # Check if file matches pattern
+                if pattern is not None:
+                    import fnmatch
+                    if not fnmatch.fnmatch(item_path.name, pattern):
+                        return False
+                        
+                return True
+                
+            # Walk directory with custom logic
+            def walk_directory(current_path: Path, current_depth: int = 0):
+                try:
+                    for item in current_path.iterdir():
+                        if should_include(item, current_depth):
+                            relative_path = item.relative_to(path)
+                            item_info = {
+                                "name": item.name,
+                                "path": str(relative_path),
+                                "is_dir": item.is_dir(),
+                                "size": item.stat().st_size if item.is_file() else None,
+                                "modified": item.stat().st_mtime,
+                            }
+                            result.append(item_info)
+                            
+                        # Recursively process directories
+                        if item.is_dir() and (max_depth is None or current_depth < max_depth):
+                            # Skip directories that match gitignore patterns
+                            if not (respect_gitignore and self._is_ignored_by_gitignore(item, path, gitignore_patterns)):
+                                walk_directory(item, current_depth + 1)
+                except PermissionError:
+                    # Skip directories we don't have permission to access
+                    pass
+                    
+            # Start the recursive walk
+            walk_directory(path)
+            
+            # Sort results: directories first, then files, both alphabetically
+            result.sort(key=lambda x: (not x["is_dir"], x["name"].lower()))
+            
+            return True, result
+        except Exception as e:
+            error_msg = f"Failed to find files in {path}: {str(e)}"
+            logger.error(error_msg)
+            return False, error_msg
+            
+    def _load_gitignore_patterns(self, path: Path) -> List[str]:
+        """Load gitignore patterns from all .gitignore files in the path hierarchy.
+        
+        Args:
+            path: Base path to start looking for .gitignore files
+            
+        Returns:
+            List of gitignore patterns
+        """
+        patterns = []
+        
+        # Find all .gitignore files in the path and its parents
+        current = path
+        while current != current.parent:  # Stop at filesystem root
+            gitignore_path = current / '.gitignore'
+            if gitignore_path.is_file():
+                try:
+                    content = gitignore_path.read_text(encoding='utf-8')
+                    for line in content.splitlines():
+                        line = line.strip()
+                        # Skip empty lines and comments
+                        if line and not line.startswith('#'):
+                            patterns.append((current, line))
+                except Exception as e:
+                    logger.warning(f"Failed to read .gitignore at {gitignore_path}: {str(e)}")
+            current = current.parent
+            
+        return patterns
+        
+    def _is_ignored_by_gitignore(self, file_path: Path, base_path: Path, patterns: List[Tuple[Path, str]]) -> bool:
+        """Check if a file is ignored by any of the gitignore patterns.
+        
+        Args:
+            file_path: Path to the file to check
+            base_path: Base path where the search started
+            patterns: List of (directory, pattern) tuples from .gitignore files
+            
+        Returns:
+            True if the file should be ignored, False otherwise
+        """
+        try:
+            import fnmatch
+            
+            # Get the relative path from the base of the repository
+            for pattern_dir, pattern in patterns:
+                # The pattern should be applied relative to the directory containing the .gitignore file
+                try:
+                    relative_path = file_path.relative_to(pattern_dir)
+                    relative_str = str(relative_path)
+                    
+                    # Handle negation patterns (patterns starting with !)
+                    if pattern.startswith('!'):
+                        negated_pattern = pattern[1:]
+                        if fnmatch.fnmatch(relative_str, negated_pattern):
+                            return False
+                    # Handle directory-only patterns (ending with /)
+                    elif pattern.endswith('/'):
+                        dir_pattern = pattern.rstrip('/')
+                        if file_path.is_dir() and fnmatch.fnmatch(relative_str, dir_pattern):
+                            return True
+                    # Handle standard patterns
+                    elif fnmatch.fnmatch(relative_str, pattern):
+                        return True
+                    # Handle subdirectory patterns (e.g., "dir/" should match "dir/file.txt")
+                    elif '/' in pattern:
+                        # Split into directory and file parts
+                        pattern_dir_part = pattern.split('/')[0]
+                        if file_path.is_dir() and file_path.name == pattern_dir_part:
+                            return True
+                except ValueError:
+                    # If file_path is not relative to pattern_dir, skip this pattern
+                    continue
+                    
+            return False
+        except Exception as e:
+            logger.warning(f"Error checking gitignore patterns: {str(e)}")
+            return False
+    
     def search_files(
         self, pattern: str, path: Union[str, Path], file_pattern: Optional[str] = None
     ) -> Tuple[bool, Union[List[Dict[str, str]], str]]:
