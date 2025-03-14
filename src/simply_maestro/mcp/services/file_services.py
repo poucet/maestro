@@ -41,7 +41,7 @@ def register_file_services(mcp: FastMCP, file_manager: FileManager) -> None:
         return content
 
     @mcp.tool()
-    async def edit_file(path: str, content: str) -> str:
+    async def write_file(path: str, content: str) -> str:
         """Write content to a file.
         
         Args:
