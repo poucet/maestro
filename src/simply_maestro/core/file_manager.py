@@ -176,7 +176,11 @@ class FileManager:
             if recursive:
                 # Handle recursive listing
                 for item in path.glob('**/*'):
-                    # Skip .git directories and similar hidden files
+                    # Skip .git directories explicitly
+                    if ".git" in item.parts:
+                        continue
+                        
+                    # Skip other hidden files and directories 
                     if any(part.startswith('.') for part in item.parts):
                         continue
                         
@@ -262,6 +266,10 @@ class FileManager:
                 if max_depth is not None and current_depth > max_depth:
                     return False
                     
+                # Always skip .git directories
+                if ".git" in item_path.parts:
+                    return False
+                    
                 # Skip hidden files/dirs unless explicitly included in pattern
                 if item_path.name.startswith('.') and (pattern is None or not pattern.startswith('.')):
                     return False
@@ -309,6 +317,10 @@ class FileManager:
                             
                         # Recursively process directories
                         if item.is_dir() and (max_depth is None or current_depth < max_depth):
+                            # Always skip .git directories
+                            if ".git" in item.parts:
+                                continue
+                                
                             # Skip directories that match gitignore patterns
                             if not (respect_gitignore and self._is_ignored_by_gitignore(item, path, gitignore_patterns)):
                                 walk_directory(item, current_depth + 1)
