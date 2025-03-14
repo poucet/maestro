@@ -220,7 +220,7 @@ def register_file_services(mcp: FastMCP, file_manager: FileManager) -> None:
         }
     
     @mcp.tool()
-    async def search_files(pattern: str, path: str, file_pattern: Optional[str] = None) -> str:
+    async def grep_files(pattern: str, path: str, file_pattern: Optional[str] = None) -> str:
         """Search for a pattern in files.
         
         Args:
@@ -234,7 +234,7 @@ def register_file_services(mcp: FastMCP, file_manager: FileManager) -> None:
         file_pattern_info = f", file_pattern='{file_pattern}'" if file_pattern else ""
         logger.info(f"MCP Tool Call: search_files(pattern='{pattern}', path='{path}'{file_pattern_info})")
         
-        success, results = file_manager.search_files(pattern, path, file_pattern)
+        success, results = file_manager.grep_files(pattern, path, file_pattern)
         if not success or isinstance(results, str):
             logger.error(f"MCP Tool search_files FAILED: {results}")
             return f"Error: {results}"

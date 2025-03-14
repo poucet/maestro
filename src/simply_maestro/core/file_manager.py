@@ -418,7 +418,7 @@ class FileManager:
             logger.warning(f"Error checking gitignore patterns: {str(e)}")
             return False
     
-    def search_files(
+    def grep_files(
         self, pattern: str, path: Union[str, Path], file_pattern: Optional[str] = None
     ) -> Tuple[bool, Union[List[Dict[str, str]], str]]:
         """Search for a pattern in files.
