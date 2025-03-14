@@ -200,6 +200,12 @@ As the project is in the planning phase, no implementation issues have been enco
   - Updated process_services.py to remove log file setup in restart_task
   - Changed to a simpler logging approach where the tool handles its own logging
   - Reduced system complexity while maintaining logging capabilities
+- Fixed critical bug in apply_diff function in FileManager:
+  - Corrected implementation to replace only specific chunks rather than entire files
+  - Added validation to ensure original content exists in file before replacement
+  - Implemented verification that changes were actually applied
+  - Improved error reporting with more specific failure messages
+  - Enhanced docstring to clarify the intended chunk-based replacement behavior
 
 ## Next Targets
 

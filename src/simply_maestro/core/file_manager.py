@@ -105,12 +105,12 @@ class FileManager:
     def apply_diff(
         self, path: Union[str, Path], original: str, modified: str
     ) -> Tuple[bool, str]:
-        """Apply a diff to a file.
+        """Apply a diff to a file by replacing a specific chunk with another.
 
         Args:
             path: Path to the file.
-            original: Original content.
-            modified: Modified content.
+            original: Original content chunk to replace.
+            modified: Modified content chunk to insert.
 
         Returns:
             Tuple of (success, message).
@@ -128,15 +128,19 @@ class FileManager:
 
             current_content = path.read_text(encoding="utf-8")
 
-            # Generate unified diff
-            diff = difflib.unified_diff(
-                current_content.splitlines(),
-                modified.splitlines(),
-                lineterm="",
-            )
+            # Check if original content exists in the file
+            if original not in current_content:
+                return False, "Original content not found in file"
 
-            # Apply changes
-            return self.write_file(path, modified)
+            # Replace the chunk
+            updated_content = current_content.replace(original, modified)
+            
+            # If no changes were made, return error
+            if current_content == updated_content:
+                return False, "No changes were made to the file"
+
+            # Write the updated content to the file
+            return self.write_file(path, updated_content)
         except Exception as e:
             error_msg = f"Failed to apply diff to {path}: {str(e)}"
             logger.error(error_msg)
