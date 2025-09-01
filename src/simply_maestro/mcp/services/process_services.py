@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server import FastMCP
 
 from simply_maestro.core import ProcessManager
 

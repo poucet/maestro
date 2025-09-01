@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from mcp.server.fastmcp import FastMCP
+from mcp.server import FastMCP
 
 from simply_maestro.core import FileManager, VersionControlManager
 from simply_maestro.core.process_manager import ProcessManager, ProcessConfig
