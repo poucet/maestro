@@ -34,7 +34,11 @@ def create_mcp_server(
         Configured MCP server.
     """
     # Create FastMCP server instance with Streamable HTTP support
-    mcp = FastMCP("simply-maestro")
+    mcp = FastMCP(
+        "simply-maestro",
+        json_response=True,
+        stateless_http=True,
+    )
 
     # Register all services
     register_process_services(mcp, process_manager)
