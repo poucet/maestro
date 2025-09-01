@@ -1,20 +1,11 @@
 """MCP server implementation for Simply Maestro."""
 
-import asyncio
 import logging
 import os
 from pathlib import Path
-from typing import Dict, List, Optional
 
-import uvicorn
 from dotenv import load_dotenv
-from mcp.server import Server
 from mcp.server.fastmcp import FastMCP
-from mcp.server.sse import SseServerTransport
-from starlette.applications import Starlette
-from starlette.requests import Request
-from starlette.routing import Mount, Route
-from starlette.types import Receive, Scope, Send
 
 from simply_maestro.core import FileManager, VersionControlManager
 from simply_maestro.core.process_manager import ProcessManager, ProcessConfig
@@ -31,7 +22,6 @@ def create_mcp_server(
     process_manager: ProcessManager,
     file_manager: FileManager,
     version_control_manager: VersionControlManager,
-    mcp_port: int
 ) -> FastMCP:
     """Create an MCP server for Simply Maestro.
 
@@ -43,15 +33,14 @@ def create_mcp_server(
     Returns:
         Configured MCP server.
     """
-    # Create FastMCP server instance
-    mcp = FastMCP("simply-maestro", host="0.0.0.0", port=mcp_port)
+    # Create FastMCP server instance with Streamable HTTP support
+    mcp = FastMCP("simply-maestro")
 
     # Register all services
     register_process_services(mcp, process_manager)
     register_file_services(mcp, file_manager)
     register_git_services(mcp, version_control_manager)
 
-    # Add handlers for additional capabilities as needed
     return mcp
 
 
@@ -64,7 +53,7 @@ def start_mcp_server() -> None:
     target_cmd = os.environ.get("SIMPLY_MAESTRO_TARGET_CMD", "")
     working_dir = os.environ.get("SIMPLY_MAESTRO_WORKING_DIR", ".")
     log_level = os.environ.get("SIMPLY_MAESTRO_LOG_LEVEL", "INFO")
-    mcp_port = int(os.environ.get("SIMPLY_MAESTRO_MCP_PORT", "5000"))
+    mcp_port = int(os.environ.get("SIMPLY_MAESTRO_MCP_PORT", "8080"))
     target_port = os.environ.get("SIMPLY_MAESTRO_TARGET_PORT")
     if target_port:
         target_port = int(target_port)
@@ -110,14 +99,16 @@ def start_mcp_server() -> None:
     
     version_control_manager = VersionControlManager(repo_path=work_dir_path)
     
-    # Create MCP server
+    # Create MCP server with Streamable HTTP transport
     mcp_server = create_mcp_server(
         process_manager=process_manager,
         file_manager=file_manager,
         version_control_manager=version_control_manager,
-        mcp_port=mcp_port
     )
-    mcp_server.run("sse")
+    
+    # Run server with Streamable HTTP transport
+    logger.info(f"Starting MCP server with Streamable HTTP on port {mcp_port}")
+    mcp_server.run(transport="http", host="0.0.0.0", port=mcp_port)
 
 if __name__ == "__main__":
     start_mcp_server()

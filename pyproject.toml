@@ -14,12 +14,8 @@ authors = [
 ]
 dependencies = [
     "psutil>=5.9.0",
-    "mcp>=1.0.0",
-    "fastapi>=0.95.0",
-    "uvicorn>=0.22.0",
-    "python-dotenv>=1.0.0",
-    "starlette>=0.25.0",
-    "sse-starlette>=1.6.1"
+    "mcp>=1.8.0",
+    "python-dotenv>=1.0.0"
 ]
 
 [project.optional-dependencies]
