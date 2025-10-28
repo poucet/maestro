@@ -37,7 +37,6 @@ def create_mcp_server(
     mcp = FastMCP(
         "simply-maestro",
         json_response=True,
-        stateless_http=True,
     )
 
     # Register all services
