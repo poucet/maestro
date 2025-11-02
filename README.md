@@ -43,8 +43,8 @@ Ensure you have Python 3.10+ and `uv` installed. Then:
 
 ```bash
 # Clone the repository
-git clone https://github.com/username/simply-maestro.git
-cd simply-maestro
+git clone https://github.com/poucet/maestro.git
+cd maestro
 
 # Create and activate virtual environment
 uv venv
